@@ -1,6 +1,6 @@
 [project]
 name = "hadalized"
-version = "0.2.2"
+version = "0.3.0"
 description = "Hadalized theme builder."
 readme = "README.md"
 authors = [
@@ -9,6 +9,7 @@ authors = [
 requires-python = ">=3.14"
 dependencies = [
     "coloraide>=6.2",
+    "cyclopts>=4.5.0",
     "jinja2>=3.1.6",
     "loguru>=0.7.3",
     "luadata>=1.0.5",
@@ -17,7 +18,7 @@ dependencies = [
 ]
 
 [project.scripts]
-hadalized = "hadalized:writer.run"
+hadalized = "hadalized.__main__:app"
 
 [build-system]
 requires = ["uv_build>=0.9.25,<0.10.0"]

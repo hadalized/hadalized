@@ -2,7 +2,7 @@
 
 ## Introduction
 
-Python package and application to build hadalized theme files for different
+Python package and cli application to build hadalized theme files for different
 applications.
 
 The underlying [hadalized palettes](./src/hadalized/config.py)
@@ -20,22 +20,14 @@ The builder primarily targets the neovim colorscheme files in
 [hadalized.nvim](https://github.com/shawnohare/hadalized.nvim)
 
 
-## Usage
+## Example CLI Usage
 
 Assuming `uv` is installed,
 
 ```sh
-uv run --exact hadalized`
+uv run --exact hadalized build --out="./build"
 ```
-will produce rendered theme files in `./build`.
-
-
-## Roadmap
-
-- [ ] Introduce proper cli entry point rather than simply running a function.
-  This may or may not be a separate python package utilizing `uv` workspaces.
-- [ ] Add targetted builds. For example, specify that only "neovim" themes are
-  built.
+will produce rendered theme files for all builtin applications in `./build`.
 
 
 ## Development
@@ -51,3 +43,15 @@ just check
 just test
 # commit changes
 ```
+
+## Roadmap
+
+- [x] Introduce proper cli as main entry point. (Done in v0.3 via cyclopts).
+- [x] Add targetted builds. For example, specify that only "neovim" themes are
+  built. (Done in v0.3)
+- [ ] Create example of a custom python config, e.g., for adding an app that
+  is not supported in the builtin builds.
+- [ ] (?) Allow specifying a configuration file (py or toml) to pass to cli.
+  This might imply using BaseSettings. The current setup assumes a python
+  configuration file.
+

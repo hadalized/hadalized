@@ -3,24 +3,24 @@ from hadalized.palette import Palette
 
 
 def test_palette_to(palette: Palette):
-    val = palette.hex()
+    val = palette.to("hex")
     leaf = val.hue.red
     assert isinstance(val, Palette)
     assert isinstance(leaf, str)
     assert leaf.startswith("#")
 
-    val = palette.css()
+    val = palette.to("css")
     leaf = val.hue.red
     assert isinstance(val, Palette)
     assert isinstance(leaf, str)
 
-    val = palette.oklch()
+    val = palette.to("oklch")
     leaf = val.hue.red
     assert isinstance(val, Palette)
     assert isinstance(leaf, str)
     assert leaf.startswith("oklch")
 
-    val = palette.gamut_info()
+    val = palette.to("gamut")
     leaf = val.hue.red
     assert isinstance(val, Palette)
     assert isinstance(leaf, GamutInfo)

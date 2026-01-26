@@ -1,6 +1,5 @@
 """Render templates and write outputs."""
 
-import shutil
 from contextlib import suppress
 from functools import cache
 from hashlib import blake2b
@@ -21,7 +20,7 @@ from jinja2 import (
 from loguru import logger
 
 from hadalized.cache import Cache
-from hadalized.config import BuildConfig, Config
+from hadalized.config import BuildConfig, Config, ContextType
 
 if TYPE_CHECKING:
     from hadalized.base import BaseNode
@@ -53,9 +52,9 @@ class Template:
     )
     _default_fs_env: ClassVar[Environment] = get_fs_env()
 
-    def __init__(self, name: str, fs_dir: Path | None = None):
+    def __init__(self, name: str, template_dir: Path | None = None):
         """Load template with the specified name."""
-        fs_env = get_fs_env(fs_dir) if fs_dir else self._default_fs_env
+        fs_env = get_fs_env(template_dir) if template_dir else self._default_fs_env
         try:
             template = fs_env.get_template(name)
         except TemplateNotFound:
@@ -113,77 +112,61 @@ class ThemeWriter:
         """
         config = config or Config()
         self.config: Config = config
-        self.cache = Cache(cache_dir=config.cache_dir)
+        self.cache = Cache(cache_dir=config.cache_dir, in_memory=config.cache_in_memory)
         self.build_dir: Path = self.config.build_dir
         self.palettes = list(self.config.palettes.values())
-
-    @staticmethod
-    def _fmt_path(path: str | Path, context: BaseNode) -> Path:
-        return Path(str(path).format(**context.data))
 
     @staticmethod
     def _hash(template: Template, context: BaseNode) -> str:
         data = template.encode() + b":::" + context.encode()
         return blake2b(data, digest_size=32).hexdigest()
 
-    def _should_generate(self, path: Path, digest: str) -> bool:
-        """Check whether a file should be generated.
+    def _skip(self, path: Path, digest: str) -> bool:
+        return path.exists() and self.cache.get(path) == digest
 
-        Returns:
-            True if the file should be generated again due to template changes,
-            context changes, or non-existence of target file.
-
-        """
-        return not path.exists() or self.cache.get_hash(path) != digest
-
-    def build(self, build_config: BuildConfig) -> list[Path]:
+    def build(self, config: BuildConfig, output_dir: Path | None = None) -> list[Path]:
         """Generate color theme files for a specific app.
 
         Returns:
-            A list of file paths that were generated.
+            A list of theme file paths that were built.
 
         """
-        config = self.config
-        template = Template(build_config.template, config.template_fs_dir)
-        written: list[Path] = []
-        if build_config.context_type == "palette":
-            context_nodes = self.palettes
-        else:
-            context_nodes = [config]
+        template = Template(config.template, self.config.template_dir)
+        files_built: list[Path] = []
+        match config.context_type:
+            case ContextType.palette:
+                context_nodes = self.palettes
+            case ContextType.full:
+                context_nodes = [self.config]
 
+        logger.info(f"Handling themes for {config.name}.")
         for node in context_nodes:
-            path: Path = config.build_dir / self._fmt_path(
-                build_config.output_path, node
-            )
-            path.parent.mkdir(parents=True, exist_ok=True)
-            context = node.to(build_config.color_type)
+            path = self.build_dir / config.format_path(node)
+            context = node.to(config.color_type)
             digest = self._hash(template, context)
 
-            # Check whether we can skip generating the file.
-            if self._should_generate(path, digest):
-                logger.info(f"Writing {path}")
+            # Render and write theme file.
+            if not self._skip(path, digest):
+                path.parent.mkdir(parents=True, exist_ok=True)
+                logger.info(f"Writing {path}.")
                 path.write_text(template.render(context), encoding="utf-8")
                 self.cache.add(path, digest)
-                written.append(path)
-            else:
-                logger.info(f"Already generated {path}")
+                files_built.append(path)
+            elif self.config.verbose:
+                logger.info(f"Skip write {path} with hash {digest}.")
 
-            # Copy files if necessary.
-            if build_config.copy_to is not None and config.copy_files:
-                copy_path: Path = self._fmt_path(build_config.copy_to, node)
-                if config.copy_dir is not None:
-                    if copy_path.is_absolute():
-                        copy_path = copy_path.relative_to("/")
-                    copy_path = config.copy_dir / copy_path
-                if self._should_generate(copy_path, digest):
-                    copy_path.parent.mkdir(parents=True, exist_ok=True)
-                    logger.info(f"Copying {path} to {copy_path}")
-                    shutil.copy(path, copy_path)
+            # Copy built theme file.
+            if output_dir is not None:
+                copy_path = (output_dir / path.name).absolute()
+                if not self._skip(copy_path, digest):
+                    logger.info(f"Copying {path.name} to {output_dir}")
+                    output_dir.mkdir(parents=True, exist_ok=True)
+                    path.copy(copy_path)
                     self.cache.add(copy_path, digest)
-                else:
-                    logger.info(f"Already copied {copy_path}")
+            elif self.config.verbose:
+                logger.info(f"Skip copy {path} to {output_dir}.")
 
-        return written
+        return files_built
 
     def run(self) -> list[Path]:
         """Generate all relevant app theme files.
@@ -192,8 +175,6 @@ class ThemeWriter:
             A list of file paths that were generated.
 
         """
-        if self.config.copy_files:
-            logger.warning("config.copy_files set. This feature is experimental.")
         written = []
         for directive in self.config.builds.values():
             written += self.build(directive)
@@ -214,9 +195,3 @@ class ThemeWriter:
         if exc_type is not None:
             logger.error((exc_type, exc_value, traceback))
         self.cache.close()
-
-
-def run(config: Config | None = None):
-    """Generate all application theme files with the default configuration."""
-    with ThemeWriter(config) as writer:
-        writer.run()

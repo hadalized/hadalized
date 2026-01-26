@@ -31,9 +31,9 @@ class ColorType(StrEnum):
     Palette ColorField instances.
     """
 
-    info = "ColorInfo"
+    info = auto()
     """Indicates a ColorField should be a full ColorInfo instance."""
-    gamut = "GamutInfo"
+    gamut = auto()
     """Indicates a ColorField should be a GamutInfo instance, typically
     in the gamut defined by a Palette."""
     hex = auto()
@@ -225,7 +225,7 @@ def parse(val: str) -> ColorInfo:
 def extract(
     val: ColorField,
     gamut: str,
-    color_type: ColorType,
+    color_type: str | ColorType,
 ) -> ColorField:
     """Extract fields from a ColorInfo or GamutInfo instance.
 

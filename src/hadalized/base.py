@@ -41,13 +41,6 @@ class BaseNode(BaseModel):
         """
         return getattr(self, key.replace("-", "_"))
 
-    @property
-    def data(self) -> dict:
-        """Cached model dump."""
-        if self._dumped is None:
-            self._dumped = self.model_dump()
-        return self._dumped
-
     def model_dump_lua(self) -> str:
         """Dump the model as a lua table.
 

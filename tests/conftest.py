@@ -6,6 +6,7 @@ from hadalized.config import Config
 
 if TYPE_CHECKING:
     from hadalized.palette import Palette
+    from hadalized.config import BuildConfig
 
 _config = Config()
 
@@ -13,14 +14,18 @@ _config = Config()
 @pytest.fixture
 def config(tmp_path) -> Config:
     return Config(
-        build_dir=tmp_path,
-        cache_dir=None,
-        copy_dir=tmp_path / "copies",
-        copy_files=True,
-        template_fs_dir=Path(__file__).parent,
+        build_dir=tmp_path / "build",
+        cache_dir=tmp_path / "cache",
+        template_dir=Path(__file__).parent,
+        verbose=True,
     )
 
 
 @pytest.fixture
 def palette() -> Palette:
     return _config.palettes["hadalized"]
+
+
+@pytest.fixture
+def build_config() -> BuildConfig:
+    return _config.builds["neovim"]

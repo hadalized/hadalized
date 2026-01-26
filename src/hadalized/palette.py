@@ -6,7 +6,7 @@ A palette is the primary context used to render a color theme.
 from functools import partial
 from typing import Literal, Self
 
-from pydantic import Field, PrivateAttr
+from pydantic import PrivateAttr
 
 from hadalized.base import BaseNode
 from hadalized.color import (
@@ -15,8 +15,8 @@ from hadalized.color import (
     ColorMap,
     ColorType,
     extract,
+    parse,
 )
-from hadalized.web import WebColors
 
 
 class Hues(ColorMap):
@@ -55,6 +55,16 @@ class Bases(ColorMap):
     op: ColorField
 
 
+class Grayscale(ColorMap):
+    """Grayscale monochromatic named colors that are palette independent."""
+
+    black: ColorField = parse("oklch(0.10 0.01 220)")
+    darkgray: ColorField = parse("oklch(0.30 0.01 220)")
+    neutralgray: ColorField = parse("oklch(0.50 0.01 220)")
+    lightgray: ColorField = parse("oklch(0.70 0.01 220)")
+    white: ColorField = parse("oklch(0.995 0.01 220)")
+
+
 class PaletteMeta(BaseNode):
     """Palette metadata."""
 
@@ -78,8 +88,8 @@ class PaletteColors(BaseNode):
     """Name highlight color variants."""
     base: Bases
     """Named bases relative to the palette."""
-    web: WebColors = Field(default_factory=WebColors.get)
-    """Static named colors."""
+    gs: Grayscale = Grayscale()
+    """Grayscale colors."""
 
 
 class Palette(PaletteColors, PaletteMeta):
@@ -115,6 +125,7 @@ class Palette(PaletteColors, PaletteMeta):
                 bright=self.bright,
                 hl=self.hl,
                 base=self.base,
+                gs=self.gs,
             )
         return self._colors
 
@@ -131,7 +142,7 @@ class Palette(PaletteColors, PaletteMeta):
             k: v.map(handler) if isinstance(v, ColorMap) else v for k, v in self
         })
 
-    def to(self, color_type: ColorType) -> Self:
+    def to(self, color_type: ColorType | str) -> Self:
         """Entry point for the `map` method that accepts a directive.
 
         Returns:
@@ -147,42 +158,3 @@ class Palette(PaletteColors, PaletteMeta):
             val = self.map(func)
             self._cache[color_type] = val
         return val
-
-    def gamut_info(self) -> Self:
-        """Extract GamutInfo from each ColorInfo leaf.
-
-        Returns:
-            A new Palette where each ColorField leaf is a GamutInfo instance.
-
-        """
-        return self.to(ColorType.gamut)
-
-    def hex(self) -> Self:
-        """Extract RGB hex codes from each ColorInfo leaf.
-
-        Returns:
-            A new Palette where each ColorField leaf is a hex code string
-            in the palette's `gamut` value.
-
-        """
-        return self.to(ColorType.hex)
-
-    def css(self) -> Self:
-        """Extract css strings from each ColorInfo leaf.
-
-        Returns:
-            A new Palette where each ColorField leaf is a css string referencing
-            the palette's `gamut` value.
-
-        """
-        return self.to(ColorType.css)
-
-    def oklch(self) -> Self:
-        """Extract oklch strings from each ColorInfo leaf.
-
-        Returns:
-            A new Palette where each ColorField leaf is an oklch string fit
-            the palette's `gamut` value.
-
-        """
-        return self.to(ColorType.oklch)
