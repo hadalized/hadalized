@@ -1,7 +1,8 @@
 """Module containing all underlying color definitions and gamut info."""
 
+from enum import StrEnum, auto
 from pathlib import Path
-from typing import Literal, Self
+from typing import Self
 
 import xdg_base_dirs as xdg
 from pydantic import Field, PrivateAttr
@@ -313,31 +314,59 @@ class TerminalConfig(BaseNode):
     ansi: ANSIMap = ANSIMap()
 
 
-class BuildConfig(BaseNode):
-    """Information about which files should be generatted specific template."""
+class ContextType(StrEnum):
+    """Values determine which context expose to template when building a theme."""
 
+    palette = auto()
+    """A single palette will be passed to the `context` variable of a template."""
+    full = auto()
+    """A full `Config` instance will be passed to the `context` variable."""
+
+
+class BuiltinThemes(StrEnum):
+    """Enumerates the list of themes that are handled by the builder."""
+
+    neovim = auto()
+    wezterm = auto()
+    starship = auto()
+
+
+class BuildConfig(BaseNode):
+    """Information about which files should be generatted specific app."""
+
+    name: str = Field(
+        examples=["neovim", "myapp", "html-examples"],
+    )
+    """Application name or theme category."""
+    subdir: Path | None = None
+    """Build subdirectory where built files should be written."""
     template: str
     """Template filename."""
-    output_path: Path
-    """Output path template relative to a build directory."""
-    copy_to: Path | None = None
-    """Indicates if the built file should be copied to another directory.
-    Typically relative the parent of the underlying build directory.
-    """
-    context_type: Literal["palette", "config"]
-    """The underlying context type to pass to the template. Currently two
-    modes are supported.
-    - "palette", which assumes that each template is rendered with an individual
-      palette.
-    - "config", where there entire configuration, in particular all palettes,
-      are passed into a single palette.
-    """
-    # handler_type: Literal["hex", "css", "oklch", "lua", "identity"]
-    color_type: ColorType
+    filename: str = "{context.name}.{ext}"
+    """Name of file, including extension."""
+    file_ext: str | None = None
+    """File mimetype. If null, the template extension is used."""
+    context_type: ContextType = ContextType.palette
+    """The underlying context type to pass to the template. """
+    color_type: ColorType = ColorType.hex
     """How each Palette should be transformed when presented as context
     to the template."""
     skip: bool = False
     """If set to True, skip the directive."""
+
+    def format_path(self, context: BaseNode) -> Path:
+        """File output path relative to build directory.
+
+        Returns:
+            The absolute path where a file should be written.
+
+        """
+        if self.filename.endswith("{ext}"):
+            _, _, ext = self.template.rpartition(".")
+        else:
+            ext = ""
+        fname = self.filename.format(context=context, ext=ext).rstrip(".")
+        return (self.subdir or Path(self.name)) / fname
 
     @staticmethod
     def defaults() -> dict[str, BuildConfig]:
@@ -349,35 +378,27 @@ class BuildConfig(BaseNode):
         """
         return {
             "neovim": BuildConfig(
+                name="neovim",
                 template="neovim.lua",
-                context_type="palette",
-                output_path=Path("neovim/{name}.lua"),
-                copy_to=Path("colors/{name}.lua"),
-                color_type=ColorType.hex,
             ),
             "wezterm": BuildConfig(
+                name="wezterm",
                 template="wezterm.toml",
-                context_type="palette",
-                output_path=Path("wezterm/{name}.toml"),
-                color_type=ColorType.hex,
-                copy_to=xdg.xdg_config_home() / "wezterm" / "{name}.toml",
             ),
             "starship": BuildConfig(
+                name="starship",
                 template="starship.toml",
-                context_type="config",
-                output_path=Path("starship/starship.toml"),
-                color_type=ColorType.hex,
+                context_type=ContextType.full,
+                filename="starship.toml",
             ),
             "info": BuildConfig(
+                name="info",
                 template="palette_info.json",
-                context_type="palette",
-                output_path=Path("info/{name}.json"),
                 color_type=ColorType.info,
             ),
             "html_samples": BuildConfig(
+                name="html_samples",
                 template="palette.html",
-                context_type="palette",
-                output_path=Path("html_samples/{name}.html"),
                 color_type=ColorType.css,
             ),
         }
@@ -390,16 +411,13 @@ class Config(BaseNode):
     to write the build artifacts.
     """
 
-    build_dir: Path = Path("./build")
+    verbose: bool = False
+    build_dir: Path = xdg.xdg_state_home() / "hadalized" / "build"
     """Directory containing built theme files."""
-    cache_dir: Path | None = Cache.default_dir
+    cache_dir: Path = Cache.default_dir
+    cache_in_memory: bool = False
     """Application cache directory. Set to `None` to use an in-memory cache."""
-    copy_files: bool = False
-    """If set, any files built with a `copy_to` directive will be copied. This
-    flag is experimental and behavior may change in future releases."""
-    copy_dir: Path | None = None
-    """Prefix dir for copies. Typically set in debug / test situations."""
-    template_fs_dir: Path = Path("./templates")
+    template_dir: Path = Path("./templates")
     """Directory where templates will be searched for. If a template is not
     found in this directory, it will be loaded from those defined in the
     package."""
@@ -425,14 +443,8 @@ class Config(BaseNode):
             A new Config instance whose ColorFields match the input type.
 
         """
-        return self.__class__(
-            build_dir=self.build_dir,
-            cache_dir=self.cache_dir,
-            builds=self.builds,
-            palettes={k: p.to(color_type) for k, p in self.palettes.items()},
-            terminal=self.terminal,
-            misc=self.misc,
-        )
+        palettes = {k: p.to(color_type) for k, p in self.palettes.items()}
+        return self.replace(palettes=palettes)
 
     def hex(self) -> Self:
         """Convert palette ColorField values to their hex representation.

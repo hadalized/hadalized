@@ -18,18 +18,25 @@ class CacheDB:
 
     default_dir: ClassVar[Path] = xdg.xdg_cache_home() / "hadalized"
 
-    def __init__(self, cache_dir: Path | None = default_dir):
+    def __init__(
+        self,
+        cache_dir: Path = default_dir,
+        *,
+        in_memory: bool = False,
+    ):
         """Create a new instance.
 
         Args:
             cache_dir: Where to store the database file.
                If `None` is provided, an in-memory database
                will be used.
+            in_memory: Keyword-only argument that specifies
+               caching should take place in memory.
 
         """
-        self.cache_dir: Path = cache_dir or self.default_dir
-        self.in_memory: bool = cache_dir is None
-        self._db_file: Path = self.cache_dir / "cache.db"
+        self.cache_dir: Path = cache_dir
+        self.in_memory: bool = in_memory
+        self._db_file: Path = self.cache_dir / "builds.db"
         if not self.in_memory:
             self.cache_dir.mkdir(parents=True, exist_ok=True)
         self._conn: sqlite3.Connection
@@ -111,7 +118,7 @@ class Cache(CacheDB):
                 [str(path)],
             )
 
-    def get_hash(self, path: str | Path) -> str | None:
+    def get(self, path: str | Path) -> str | None:
         """Get a build digest for the input path.
 
         Returns:
