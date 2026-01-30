@@ -7,137 +7,9 @@ from typing import Self
 from pydantic import Field, PrivateAttr
 
 from hadalized import homedirs
-from hadalized.color import ColorMap
-from hadalized.palette import (
-    BaseNode,
-    Bases,
-    ColorField,
-    ColorFieldType,
-    Hues,
-    Palette,
-)
-
-
-class Ref(ColorMap):
-    """Container for named color refs used in foregrounds and backgrounds."""
-
-    black: ColorField = "oklch(0.10 0.01 220)"
-    darkgray: ColorField = "oklch(0.30 0.01 220)"
-    darkslategray: ColorField = "oklch(0.30 0.03 220)"
-    gray: ColorField = "oklch(0.50 0.01 220)"
-    slategray: ColorField = "oklch(0.600 0.03 220)"
-    lightgray: ColorField = "oklch(0.70 0.01 220)"
-    lightslategray: ColorField = "oklch(0.700 0.02 220)"
-    white: ColorField = "oklch(0.995 0.01 220)"
-    b12: ColorField = "oklch(0.125 0.025 220)"
-    b13: ColorField = "oklch(0.135 0.025 220)"
-    b16: ColorField = "oklch(0.1625 0.025 220)"
-    b20: ColorField = "oklch(0.200 .030 220)"
-    b25: ColorField = "oklch(0.250 .030 220)"
-    b30: ColorField = "oklch(0.300 .035 220)"
-    b35: ColorField = "oklch(0.350 .035 220)"
-    g20: ColorField = "oklch(0.200 .010 220)"
-    g30: ColorField = "oklch(0.300 .010 220)"
-    g35: ColorField = "oklch(0.350 .010 220)"
-    g45: ColorField = "oklch(0.450 .010 220)"
-    g60: ColorField = "oklch(0.600 .010 220)"
-    g65: ColorField = "oklch(0.650 .010 220)"
-    g70: ColorField = "oklch(0.700 .010 220)"
-    g75: ColorField = "oklch(0.750 .010 220)"
-    g80: ColorField = "oklch(0.800 .010 220)"
-    g90: ColorField = "oklch(0.900 .010 220)"
-    s80: ColorField = "oklch(0.800 .020 100)"
-    s85: ColorField = "oklch(0.850 .020 100)"
-    s90: ColorField = "oklch(0.900 .020 100)"
-    s91: ColorField = "oklch(0.910 .020 100)"
-    s92: ColorField = "oklch(0.925 .020 100)"
-    s95: ColorField = "oklch(0.950 .020 100)"
-    s97: ColorField = "oklch(0.975 .015 100)"
-    s99: ColorField = "oklch(0.990 .010 100)"
-    s100: ColorField = "oklch(0.995 .010 100)"
-    w80: ColorField = "oklch(0.800 .005 100)"
-    w85: ColorField = "oklch(0.850 .005 100)"
-    w90: ColorField = "oklch(0.900 .005 100)"
-    w91: ColorField = "oklch(0.910 .005 100)"
-    w92: ColorField = "oklch(0.925 .005 100)"
-    w95: ColorField = "oklch(0.950 .005 100)"
-    w97: ColorField = "oklch(0.975 .005 100)"
-    w99: ColorField = "oklch(0.990 .005 100)"
-    w100: ColorField = "oklch(0.995 .005 100)"
-
-
-hues: dict[str, Hues] = {
-    "neutral": Hues(
-        red="oklch(0.575 0.185 25)",
-        orange="oklch(0.650 0.150 60)",
-        yellow="oklch(0.675 0.120 100)",
-        lime="oklch(0.650 0.130 115)",
-        green="oklch(0.575 0.165 130)",
-        mint="oklch(0.675 0.130 155)",
-        cyan="oklch(0.625 0.100 180)",
-        azure="oklch(0.675 0.110 225)",
-        blue="oklch(0.575 0.140 250)",
-        violet="oklch(0.575 0.185 290)",
-        magenta="oklch(0.575 0.185 330)",
-        rose="oklch(0.675 0.100 360)",
-    ),
-    "dark": Hues(
-        red="oklch(0.60 0.185 25)",
-        orange="oklch(0.650 0.150 60)",
-        yellow="oklch(0.700 0.120 100)",
-        lime="oklch(0.675 0.120 115)",
-        green="oklch(0.650 0.165 130)",
-        mint="oklch(0.715 0.130 155)",
-        cyan="oklch(0.650 0.100 180)",
-        azure="oklch(0.725 0.110 225)",
-        blue="oklch(0.625 0.150 250)",
-        violet="oklch(0.625 0.185 290)",
-        magenta="oklch(0.625 0.185 330)",
-        rose="oklch(0.700 0.100 360)",
-    ),
-    "light": Hues(
-        red="oklch(0.550 0.185 25)",
-        orange="oklch(0.650 0.150 60)",
-        yellow="oklch(0.650 0.120 100)",
-        lime="oklch(0.650 0.130 115)",
-        green="oklch(0.575 0.165 130)",
-        mint="oklch(0.650 0.130 155)",
-        cyan="oklch(0.550 0.100 180)",
-        azure="oklch(0.650 0.110 225)",
-        blue="oklch(0.575 0.140 250)",
-        violet="oklch(0.550 0.185 290)",
-        magenta="oklch(0.550 0.185 330)",
-        rose="oklch(0.625 0.100 360)",
-    ),
-    "hl": Hues(
-        red="oklch(0.800 0.100 25)",
-        orange="oklch(0.850 0.100 60)",
-        yellow="oklch(0.950 0.200 100)",
-        lime="oklch(0.855 0.100 115)",
-        green="oklch(0.85 0.100 130)",
-        mint="oklch(0.875 0.100 155)",
-        cyan="oklch(0.900 0.100 180)",
-        azure="oklch(0.875 0.100 225)",
-        blue="oklch(0.825 0.100 250)",
-        violet="oklch(0.825 0.200 290)",
-        magenta="oklch(0.825 0.200 330)",
-        rose="oklch(0.825 0.200 360)",
-    ),
-    "bright": Hues(
-        red="oklch(0.675 0.200 25)",
-        orange="oklch(0.75 0.175 60)",
-        yellow="oklch(0.80 0.165 100)",
-        lime="oklch(0.800 0.185 120)",
-        green="oklch(0.800 0.200 135)",
-        mint="oklch(0.800 0.195 155)",
-        cyan="oklch(0.800 0.145 180)",
-        azure="oklch(0.800 0.135 225)",
-        blue="oklch(0.800 0.100 250)",
-        violet="oklch(0.800 0.100 290)",
-        magenta="oklch(0.800 0.185 330)",
-        rose="oklch(0.800 0.120 360)",
-    ),
-}
+from hadalized.base import BaseNode
+from hadalized.color import Bases, ColorFieldType, Hues, Ref
+from hadalized.palette import Palette
 
 
 def default_palettes() -> dict[str, Palette]:
@@ -147,8 +19,6 @@ def default_palettes() -> dict[str, Palette]:
         A map of palette.name -> palette.
 
     """
-    ref = Ref()
-
     # Palette definitions
     dark: Palette = Palette(
         name="hadalized",
@@ -156,25 +26,8 @@ def default_palettes() -> dict[str, Palette]:
         mode="dark",
         gamut="srgb",
         aliases=["dark"],
-        hue=hues["dark"],
-        bright=hues["bright"],
-        hl=hues["hl"],
-        base=Bases(
-            bg="oklch(0.13 0.025 220)",
-            bg1="oklch(0.14 0.03 220)",
-            bg2=ref.b16,
-            bg3=ref.b20,
-            bg4=ref.b25,
-            bg5=ref.b30,
-            bg6=ref.b35,
-            hidden=ref.g45,
-            subfg=ref.g70,
-            fg=ref.w80,
-            emph=ref.w85,
-            op2=ref.s80,
-            op1=ref.s85,
-            op=ref.s90,
-        ),
+        hue=Hues.dark(),
+        base=Bases.dark(),
     )
 
     gray: Palette = Palette(
@@ -183,24 +36,15 @@ def default_palettes() -> dict[str, Palette]:
         mode="dark",
         gamut=dark.gamut,
         aliases=["gray"],
-        hue=dark.hue,
-        bright=dark.bright,
-        hl=dark.hl,
-        base=Bases(
-            bg="oklch(0.13 0.005 220)",
-            bg1="oklch(0.14 0.005 220)",
-            bg2="oklch(0.16 0.005 220)",
-            bg3="oklch(0.20 0.005 220)",
-            bg4="oklch(0.25 0.005 220)",
-            bg5="oklch(0.30 0.005 220)",
-            bg6="oklch(0.35 0.005 220)",
-            hidden=dark.base.hidden,
-            subfg=dark.base.subfg,
-            fg=dark.base.fg,
-            emph=dark.base.emph,
-            op2=ref.w80,
-            op1=ref.w85,
-            op=ref.w90,
+        hue=Hues.dark(),
+        base=Bases.dark() | Bases(
+            bg=Ref.w13,
+            bg1=Ref.w14,
+            bg2=Ref.w16,
+            bg3=Ref.w20,
+            bg4=Ref.w25,
+            bg5=Ref.w30,
+            bg6=Ref.w35,
         ),
     )
 
@@ -210,25 +54,8 @@ def default_palettes() -> dict[str, Palette]:
         mode="light",
         gamut="srgb",
         aliases=["day"],
-        hue=hues["light"],
-        bright=hues["bright"],
-        hl=hues["hl"],
-        base=Bases(
-            bg=ref.s100,
-            bg1=ref.s99,
-            bg2=ref.s95,
-            bg3=ref.s92,
-            bg4=ref.s99,
-            bg5=ref.s85,
-            bg6=ref.s80,
-            hidden=ref.g75,
-            subfg=ref.g60,
-            fg=ref.g30,
-            emph=ref.g20,
-            op2=dark.base.bg3,
-            op1=dark.base.bg2,
-            op=dark.base.bg,
-        ),
+        hue=Hues.light(),
+        base=Bases.light(),
     )
 
     white: Palette = Palette(
@@ -237,24 +64,15 @@ def default_palettes() -> dict[str, Palette]:
         mode="light",
         gamut=day.gamut,
         aliases=["white"],
-        hue=day.hue,
-        bright=day.bright,
-        hl=day.hl,
-        base=Bases(
-            bg=ref.w100,
-            bg1=ref.w99,
-            bg2=ref.w95,
-            bg3=ref.w92,
-            bg4=ref.w99,
-            bg5=ref.w85,
-            bg6=ref.w80,
-            hidden=day.base.hidden,
-            subfg=day.base.subfg,
-            fg=day.base.fg,
-            emph=day.base.emph,
-            op2=day.base.op2,
-            op1=day.base.op1,
-            op=day.base.op,
+        hue=Hues.light(),
+        base=day.base | Bases(
+            bg=Ref.w100,
+            bg1=Ref.w99,
+            bg2=Ref.w95,
+            bg3=Ref.w92,
+            bg4=Ref.w99,
+            bg5=Ref.w85,
+            bg6=Ref.w80,
         ),
     )
 
@@ -352,7 +170,7 @@ class BuildConfig(BaseNode):
     filename: str = Field(
         default="",
         examples=[
-            "{palette.name}.{template.ext}",  # default
+            "{context.name}.{template_ext}",  # default
             "starship-alt.toml",
         ],
     )

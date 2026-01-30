@@ -19,6 +19,66 @@ type ColorFieldHandler = Callable[[ColorField], ColorField]
 """A function that can be mapped across"""
 
 
+class Ref:
+    """Color definitions references."""
+
+    black: ColorField = "oklch(0.10 0.01 220)"
+    darkgray: ColorField = "oklch(0.30 0.01 220)"
+    darkslategray: ColorField = "oklch(0.30 0.03 220)"
+    gray: ColorField = "oklch(0.50 0.01 220)"
+    slategray: ColorField = "oklch(0.600 0.03 220)"
+    lightgray: ColorField = "oklch(0.70 0.01 220)"
+    lightslategray: ColorField = "oklch(0.700 0.02 220)"
+    white: ColorField = "oklch(0.995 0.01 220)"
+    # blues, high chroma
+    b12: ColorField = "oklch(0.125 0.030 220)"
+    b13: ColorField = "oklch(0.130 0.030 220)"
+    b14: ColorField = "oklch(0.140 0.030 220)"
+    b16: ColorField = "oklch(0.1625 0.030 220)"
+    b20: ColorField = "oklch(0.200 .030 220)"
+    b25: ColorField = "oklch(0.250 .030 220)"
+    b30: ColorField = "oklch(0.300 .035 220)"
+    b35: ColorField = "oklch(0.350 .035 220)"
+    # grays, mid chroma
+    g20: ColorField = "oklch(0.200 .010 220)"
+    g30: ColorField = "oklch(0.300 .010 220)"
+    g35: ColorField = "oklch(0.350 .010 220)"
+    g45: ColorField = "oklch(0.450 .010 220)"
+    g60: ColorField = "oklch(0.600 .010 220)"
+    g65: ColorField = "oklch(0.650 .010 220)"
+    g70: ColorField = "oklch(0.700 .010 220)"
+    g75: ColorField = "oklch(0.750 .010 220)"
+    g80: ColorField = "oklch(0.800 .010 220)"
+    g90: ColorField = "oklch(0.900 .010 220)"
+    # Sun / Day high chroma
+    s80: ColorField = "oklch(0.800 .020 100)"
+    s85: ColorField = "oklch(0.850 .020 100)"
+    s90: ColorField = "oklch(0.900 .020 100)"
+    s91: ColorField = "oklch(0.910 .020 100)"
+    s92: ColorField = "oklch(0.925 .020 100)"
+    s95: ColorField = "oklch(0.950 .020 100)"
+    s97: ColorField = "oklch(0.975 .015 100)"
+    s99: ColorField = "oklch(0.990 .010 100)"
+    s100: ColorField = "oklch(0.995 .010 100)"
+    # whites, low chroma
+    w13: ColorField = "oklch(0.13 0.005 220)"
+    w14: ColorField = "oklch(0.14 0.005 220)"
+    w16: ColorField = "oklch(0.16 0.005 220)"
+    w20: ColorField = "oklch(0.20 0.005 220)"
+    w25: ColorField = "oklch(0.25 0.005 220)"
+    w30: ColorField = "oklch(0.30 0.005 220)"
+    w35: ColorField = "oklch(0.35 0.005 220)"
+    w80: ColorField = "oklch(0.800 .005 100)"
+    w85: ColorField = "oklch(0.850 .005 100)"
+    w90: ColorField = "oklch(0.900 .005 100)"
+    w91: ColorField = "oklch(0.910 .005 100)"
+    w92: ColorField = "oklch(0.925 .005 100)"
+    w95: ColorField = "oklch(0.950 .005 100)"
+    w97: ColorField = "oklch(0.975 .005 100)"
+    w99: ColorField = "oklch(0.990 .005 100)"
+    w100: ColorField = "oklch(0.995 .005 100)"
+
+
 class ColorSpace(StrEnum):
     """Colorspace constants."""
 
@@ -84,48 +144,6 @@ class ColorInfo(BaseNode):
         if self._color is None:
             self._color = ColorBase(self.raw)
         return self._color
-
-
-class ColorMap(BaseNode):
-    """Base dataclass for mappings of the form color name -> ColorInfo.
-
-    The fields can either be a complete object containing data for all
-    gamuts, gamut specific color info, or a string. While the model itself
-    does not enforce uniformity of type among the strings, the data structure
-    should typically be equivalent to one of
-        Mapping[str, ColorInfo]
-        Mapping[str, GamutColor]
-        Mapping[str, str]
-    Instances containing values other than ColorInfo are obtained via transform
-    methods.
-    """
-
-    # TODO: Add a field type?
-    _field_type: ColorFieldType | None = PrivateAttr(default=None)
-
-    @property
-    def field_type(self) -> ColorFieldType | None:
-        """What the field values represent."""
-        return self._field_type
-
-    def map(self, handler: ColorFieldHandler) -> Self:
-        """Apply a generic color field handler to each field.
-
-        Example handlers enclude
-        - field extractors, e.g., mapping a parsed instance to specific field
-        - parsers, to convert from string color definitions to ColorInfo fields
-
-        Returns:
-            A new ColorMap instance with the handler applied to each field.
-
-        """
-        data: dict[str, ColorField] = {k: handler(v) for k, v in self}
-        inst = self.model_validate(data)
-        if isinstance(handler, Extractor):
-            inst._field_type = handler.field
-        elif isinstance(handler, Parser):
-            inst._field_type = ColorFieldType.info
-        return inst
 
 
 class Parser:
@@ -201,23 +219,6 @@ class Parser:
         return inst
 
 
-def parse(
-    val: str,
-    gamut: str = ColorSpace.srgb,
-    fit_method: str = "raytrace",
-) -> ColorInfo:
-    """Parse a string representation of a color.
-
-    Generate a ``Parser`` instance and call it on the input.
-
-    Returns:
-        A ColorInfo instance parsed from the input string. Raises a
-        ValueError if the input is not parseable.
-
-    """
-    return Parser(gamut=gamut, fit_method=fit_method)(val)
-
-
 class Extractor:
     """A ColorFieldHandler that extracts ``ColorInfo`` field values.
 
@@ -252,3 +253,283 @@ class Extractor:
             clsname = ColorInfo.__name__
             raise TypeError(f"Input type {type(val)} is not a {clsname} instance.")
         return val if self.is_identity else val[self.field]
+
+
+
+class ColorMap(BaseNode):
+    """Base dataclass for mappings of the form color name -> ColorInfo.
+
+    The fields can either be a complete object containing data for all
+    gamuts, gamut specific color info, or a string. While the model itself
+    does not enforce uniformity of type among the strings, the data structure
+    should typically be equivalent to one of
+        Mapping[str, ColorInfo]
+        Mapping[str, GamutColor]
+        Mapping[str, str]
+    Instances containing values other than ColorInfo are obtained via transform
+    methods.
+    """
+
+    _field_type: ColorFieldType | None = PrivateAttr(default=None)
+
+    @property
+    def field_type(self) -> ColorFieldType | None:
+        """What the field values represent."""
+        return self._field_type
+
+    def map(self, handler: ColorFieldHandler) -> Self:
+        """Apply a generic color field handler to each field.
+
+        Example handlers enclude
+        - field extractors, e.g., mapping a parsed instance to specific field
+        - parsers, to convert from string color definitions to ColorInfo fields
+
+        Returns:
+            A new ColorMap instance with the handler applied to each field.
+
+        """
+        data: dict[str, ColorField] = {k: handler(v) for k, v in self}
+        inst = self.model_validate(data)
+        if isinstance(handler, Extractor):
+            inst._field_type = handler.field
+        elif isinstance(handler, Parser):
+            inst._field_type = ColorFieldType.info
+        return inst
+
+    def __or__(self, other: Self) -> Self:
+        """Merge two ColorMap instances of the same type.
+
+        Returns:
+            A new ColorMap instance with the set fields of `other` merged in.
+
+        """
+        old = self.model_dump()
+        new_fields_set = set(other.model_fields_set)
+        merged = old | {k: v for k, v in other if k in new_fields_set}
+        return self.model_validate(merged)
+
+
+class Hues(ColorMap):
+    """Named accents.
+
+    A ``Hues`` instance serves primarily to color text and highlights.
+
+    """
+
+    red: ColorField = "oklch(0.575 0.185 25)"
+    orange: ColorField = "oklch(0.650 0.150 60)"
+    yellow: ColorField = "oklch(0.675 0.120 100)"
+    lime: ColorField = "oklch(0.650 0.130 115)"
+    green: ColorField = "oklch(0.575 0.165 130)"
+    mint: ColorField = "oklch(0.675 0.130 155)"
+    cyan: ColorField = "oklch(0.625 0.100 180)"
+    azure: ColorField = "oklch(0.675 0.110 225)"
+    blue: ColorField = "oklch(0.575 0.140 250)"
+    violet: ColorField = "oklch(0.575 0.185 290)"
+    magenta: ColorField = "oklch(0.575 0.185 330)"
+    rose: ColorField = "oklch(0.675 0.100 360)"
+
+    # @staticmethod
+    # def neutral() -> Hues:
+    #     """Neutral hues.
+    #
+    #     Returns:
+    #         A neutral mode selection of hues.
+    #
+    #     """
+    #     return Hues()
+
+    @staticmethod
+    def dark() -> Hues:
+        """Dark mode hues.
+
+        Returns:
+            A dark mode selection of hues.
+
+        """
+        return Hues(
+            red="oklch(0.60 0.185 25)",
+            orange="oklch(0.650 0.150 60)",
+            yellow="oklch(0.700 0.120 100)",
+            lime="oklch(0.675 0.120 115)",
+            green="oklch(0.650 0.165 130)",
+            mint="oklch(0.715 0.130 155)",
+            cyan="oklch(0.650 0.100 180)",
+            azure="oklch(0.725 0.110 225)",
+            blue="oklch(0.625 0.150 250)",
+            violet="oklch(0.625 0.185 290)",
+            magenta="oklch(0.625 0.185 330)",
+            rose="oklch(0.700 0.100 360)",
+        )
+
+    @staticmethod
+    def light() -> Hues:
+        """Light mode hues.
+
+        Returns:
+            A light mode selection of hues.
+
+        """
+        return Hues(
+            red="oklch(0.550 0.185 25)",
+            orange="oklch(0.650 0.150 60)",
+            yellow="oklch(0.650 0.120 100)",
+            lime="oklch(0.650 0.130 115)",
+            green="oklch(0.575 0.165 130)",
+            mint="oklch(0.650 0.130 155)",
+            cyan="oklch(0.550 0.100 180)",
+            azure="oklch(0.650 0.110 225)",
+            blue="oklch(0.575 0.140 250)",
+            violet="oklch(0.550 0.185 290)",
+            magenta="oklch(0.550 0.185 330)",
+            rose="oklch(0.625 0.100 360)",
+        )
+
+    @staticmethod
+    def highlights() -> Hues:
+        """Highlight hues.
+
+        Returns:
+            A selection of hues to use in highlights.
+
+        """
+        return Hues(
+            red="oklch(0.800 0.100 25)",
+            orange="oklch(0.850 0.100 60)",
+            yellow="oklch(0.950 0.200 100)",
+            lime="oklch(0.855 0.100 115)",
+            green="oklch(0.85 0.100 130)",
+            mint="oklch(0.875 0.100 155)",
+            cyan="oklch(0.900 0.100 180)",
+            azure="oklch(0.875 0.100 225)",
+            blue="oklch(0.825 0.100 250)",
+            violet="oklch(0.825 0.200 290)",
+            magenta="oklch(0.825 0.200 330)",
+            rose="oklch(0.825 0.200 360)",
+       )
+
+    @staticmethod
+    def bright() -> Hues:
+        """Highlight hues.
+
+        Returns:
+            A selection of brighter hues.
+
+        """
+        return Hues(
+            red="oklch(0.675 0.200 25)",
+            orange="oklch(0.75 0.175 60)",
+            yellow="oklch(0.80 0.165 100)",
+            lime="oklch(0.800 0.185 120)",
+            green="oklch(0.800 0.200 135)",
+            mint="oklch(0.800 0.195 155)",
+            cyan="oklch(0.800 0.145 180)",
+            azure="oklch(0.800 0.135 225)",
+            blue="oklch(0.800 0.100 250)",
+            violet="oklch(0.800 0.100 290)",
+            magenta="oklch(0.800 0.185 330)",
+            rose="oklch(0.800 0.120 360)",
+        )
+
+
+class Bases(ColorMap):
+    """Configuration node for foregrounds and backgrounds.
+
+    Colors are grouped primarily into
+
+    - backgrounds (main and overlays),
+    - foreground colors
+    - opposite overlays
+    """
+
+    bg: ColorField = Ref.b13
+    """Primary background color."""
+    bg1: ColorField = Ref.b14
+    """Secondary background color."""
+    bg2: ColorField = Ref.b16
+    """Tertiary background color."""
+    bg3: ColorField = Ref.b20
+    """Overlay background 1."""
+    bg4: ColorField = Ref.b25
+    """Overlay background 2."""
+    bg5: ColorField = Ref.b30
+    """Overlay background 3."""
+    bg6: ColorField = Ref.b35
+    """Overlay."""
+    hidden: ColorField = Ref.g45
+    """Strongly de-mphasized foreground text."""
+    subfg: ColorField = Ref.g70
+    """De-emphasized foreground text."""
+    fg: ColorField = Ref.w80
+    """Primary foreground text."""
+    emph: ColorField = Ref.w85
+    """Emphasized foreground text."""
+    op2: ColorField = Ref.s80
+    """Tertiary opposite background color."""
+    op1: ColorField = Ref.s85
+    """Secondary opposite background color."""
+    op: ColorField = Ref.s90
+    """Primary opposite background color."""
+
+    @staticmethod
+    def dark() -> Bases:
+        """Dark mode bases.
+
+        Returns:
+            A dark mode selection of bases.
+
+        """
+        return Bases()
+
+    @staticmethod
+    def light() -> Bases:
+        """Light mode bases.
+
+        Returns:
+            A dark mode selection of bases.
+
+        """
+        dark = Bases.dark()
+        return Bases(
+            bg=Ref.s100,
+            bg1=Ref.s99,
+            bg2=Ref.s95,
+            bg3=Ref.s92,
+            bg4=Ref.s99,
+            bg5=Ref.s85,
+            bg6=Ref.s80,
+            hidden=Ref.g75,
+            subfg=Ref.g60,
+            fg=Ref.g30,
+            emph=Ref.g20,
+            op2=dark.bg3,
+            op1=dark.bg2,
+            op=dark.bg,
+        )
+
+
+class Grayscale(ColorMap):
+    """Grayscale monochromatic named colors that are palette independent."""
+
+    black: ColorField = "oklch(0.10 0.01 220)"
+    darkgray: ColorField = "oklch(0.30 0.01 220)"
+    neutralgray: ColorField = "oklch(0.50 0.01 220)"
+    lightgray: ColorField = "oklch(0.70 0.01 220)"
+    white: ColorField = "oklch(0.995 0.003 220)"
+
+
+def parse(
+    val: str,
+    gamut: str = ColorSpace.srgb,
+    fit_method: str = "raytrace",
+) -> ColorInfo:
+    """Parse a string representation of a color.
+
+    Generate a ``Parser`` instance and call it on the input.
+
+    Returns:
+        A ColorInfo instance parsed from the input string. Raises a
+        ValueError if the input is not parseable.
+
+    """
+    return Parser(gamut=gamut, fit_method=fit_method)(val)
