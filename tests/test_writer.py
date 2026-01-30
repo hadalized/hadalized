@@ -1,7 +1,17 @@
 import pytest
 
-from hadalized.config import Config
+from hadalized.config import Config, BuildConfig, ContextType
 from hadalized.writer import ThemeWriter
+
+
+def test_writer_full_context(config: Config):
+    build = BuildConfig(
+        name="test",
+        template="template.txt",
+        context_type=ContextType.full,
+    )
+    with ThemeWriter(config) as writer:
+        writer.build(build)
 
 
 def test_theme_writer_run_uses_cache(config: Config, build_config):

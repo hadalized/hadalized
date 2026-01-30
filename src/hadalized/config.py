@@ -349,13 +349,41 @@ class BuildConfig(BaseNode):
     """Build subdir where theme files are placed. Defaults to `name`."""
     template: str
     """Template filename relative to the templates directory."""
-    filename: str = "{context.name}.{ext}"
-    """Template for output file, including extension."""
+    filename: str = Field(
+        default="",
+        examples=[
+            "{palette.name}.{template.ext}",  # default
+            "starship-alt.toml",
+        ],
+    )
+    """Output file name, including extension. For builds
+    that generate palette specific theme files, the default filename is of the
+    form `{palette.name}.{template.extension}`. For those that take in
+    all palettes into the context, the filename defaults to the underlying
+    template name.
+    """
     context_type: ContextType = ContextType.palette
     """The underlying context type to pass to the template. """
     color_type: ColorFieldType = ColorFieldType.hex
     """How each Palette should be transformed when presented as context
     to the template."""
+    _fname: str = PrivateAttr(default="")
+
+    def model_post_init(self, context, /) -> None:
+        """Construct filename template."""
+        filename = self.filename
+        if not self.filename:
+            if self.context_type == ContextType.palette:
+                filename = "{context.name}.{template_ext}"
+            else:
+                filename = self.template
+
+        # Infer extension from template file extension.
+        if filename.endswith("{template_ext}"):
+            _, _, ext = self.template.rpartition(".")
+            filename = filename.replace("{template_ext}", ext)
+        self._fname = filename.rstrip(".")
+        return super().model_post_init(context)
 
     def format_path(self, context: BaseNode) -> Path:
         """File output path relative to build directory.
@@ -364,54 +392,42 @@ class BuildConfig(BaseNode):
             The absolute path where a file should be written.
 
         """
-        if self.filename.endswith("{ext}"):
-            _, _, ext = self.template.rpartition(".")
-        else:
-            ext = ""
-        fname = self.filename.format(context=context, ext=ext).rstrip(".")
+        fname = self._fname.format(context=context).rstrip(".")
         return (self.subdir or Path(self.name)) / fname
 
 
 def default_builds() -> dict[str, BuildConfig]:
     """Builtin build configs.
 
-    Raises:
-        ValueError: If builtin builds have a name conflict.
-
     Returns:
         The default build instructions used to generate theme files.
 
     """
-    builds = [
-        BuildConfig(
+    return {
+        "neovim": BuildConfig(
             name="neovim",
             template="neovim.lua",
         ),
-        BuildConfig(
+        "wezterm": BuildConfig(
             name="wezterm",
             template="wezterm.toml",
         ),
-        BuildConfig(
+        "starship": BuildConfig(
             name="starship",
             template="starship.toml",
-            filename="starship.toml",
             context_type=ContextType.full,
         ),
-        # BuildConfig(
+        # "info": BuildConfig(
         #     name="info",
         #     template="palette_info.json",
-        #     color_type=ColorFieldType.info,
+        #     color_type=ColorFieldType.identity,
         # ),
-        BuildConfig(
+        "html-samples": BuildConfig(
             name="html-samples",
             template="palette.html",
             color_type=ColorFieldType.css,
         ),
-    ]
-    lookup = {x.name: x for x in builds}
-    if len(builds) != len(lookup):
-        raise ValueError("Default builds have conflicting keys.")
-    return lookup
+    }
 
 
 class Config(BaseNode):

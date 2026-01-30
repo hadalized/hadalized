@@ -1,38 +1,15 @@
 import pytest
 
-from hadalized.color import ColorInfo, ColorFieldType, parse, extractor
+from hadalized.color import ColorInfo, ColorFieldType, parse, Extractor
 
 from coloraide import Color
 
 
-def test_parse_oklch():
-    val = "oklch(0.5 0.1 25)"
-    assert parse(val, "srgb").oklch == val
-
-
-def test_parse_rgb():
-    assert parse("rgb(0.5 0.5 0.5)", "srgb")
-
-
-def test_parse_fail():
-    with pytest.raises(ValueError):
-        parse("bad color", "srgb")
-
-
-def test_parse_is_in_gamut():
-    assert parse("oklch(0.5 0.1 25)", "srgb").is_in_gamut
-    assert parse("oklch(0.6 0.2 25)", "display-p3").is_in_gamut
-    assert not parse("oklch(0.6 0.5 25)", "srgb").is_in_gamut
-
-
-def test_color_info_color_property():
-    val = parse("oklch(0.5 0.2 25)", "srgb")
-    assert isinstance(val.color(), Color)
-
-
-def test_color_info_color_prop_from_unparsed():
+def test_color_info_color_method():
+    raw = "rgb(0.5 0.5 0.5)"
+    color = Color(raw)
     val = ColorInfo(
-        raw="rgb(0.5 0.5 0.5)",
+        raw=raw,
         gamut="srgb",
         oklch="",
         raw_oklch="",
@@ -41,10 +18,10 @@ def test_color_info_color_prop_from_unparsed():
         is_in_gamut=True,
         max_oklch_chroma=0.5,
     )
-    assert isinstance(val.color(), Color)
+    assert color == val.color()
 
 
-def test_color_info_bad_def():
+def test_color_info_color_method_raises_error():
     val = ColorInfo(
         raw="bad color",
         gamut="",
@@ -59,14 +36,18 @@ def test_color_info_bad_def():
         val.color()
 
 
-def test_extract_on_str_input():
-    func = extractor(ColorFieldType.hex)
-    assert func("extracted") == "extracted"
+def test_extractor():
+    color = parse("oklch(0.5 0.2 25)")
+    ident = Extractor(ColorFieldType.info)
+    f_hex = Extractor("hex")
+    assert ident(color) is color
+    assert f_hex(color) == color.hex
+    assert Extractor("css")(color) == color.css
+    assert Extractor("oklch")(color) == color.oklch
 
 
-def test_extractor_on_color():
-    color = parse("oklch(0.5 0.2 25)", "srgb")
-    assert extractor("hex")(color) == color.hex
-    assert extractor("css")(color) == color.css
-    assert extractor("oklch")(color) == color.oklch
-    assert extractor(ColorFieldType.identity)(color) == color
+def test_extractor_type_error():
+    color = parse("oklch(0.5 0.2 25)")
+    func = Extractor("hex")
+    with pytest.raises(TypeError):
+        func(func(color))

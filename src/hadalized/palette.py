@@ -13,8 +13,8 @@ from hadalized.color import (
     ColorFieldHandler,
     ColorFieldType,
     ColorMap,
+    Extractor,
     Parser,
-    extractor,
 )
 
 
@@ -140,21 +140,23 @@ class Palette(PaletteColors, PaletteMeta):
     def to(self, color_type: ColorFieldType | str) -> Self:
         """Entry point for the `map` method that accepts a directive.
 
-        Raises:
-            TypeError: If this method is called on an unparsed instance.
+        When called on an unparsed instance, a new parsed instance is created
+        and acted on.
+
+        Usage:
+            palette = palette.to("hex")
 
         Returns:
             A new Palette instance with the handler applied to each
             field that contains a ColorMap instance.
 
         """
-        if not self._is_parsed:
-            raise TypeError(f"Palette {self.name} is not parsed.")
-        if color_type == ColorFieldType.identity:
-            pal = self
-        elif (pal := self._cache.get(color_type)) is None:
-            pal = self.map(extractor(color_type))
-            self._cache[color_type] = pal
+        inst = self if self._is_parsed else self.parse()
+        if color_type == ColorFieldType.info:
+            return inst
+        if (pal := inst._cache.get(color_type)) is None:
+            pal = self.map(Extractor(color_type))
+            inst._cache[color_type] = pal
         return pal
 
     def parse(self, gamut: str | None = None) -> Self:
