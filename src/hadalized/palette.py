@@ -2,66 +2,21 @@
 
 A palette is the primary context used to render a color theme.
 """
-
 from typing import Literal, Self
 
 from pydantic import Field, PrivateAttr
 
 from hadalized.base import BaseNode
 from hadalized.color import (
-    ColorField,
+    Bases,
     ColorFieldHandler,
     ColorFieldType,
     ColorMap,
     Extractor,
+    Grayscale,
+    Hues,
     Parser,
 )
-
-
-class Hues(ColorMap):
-    """Configuration node for named accents."""
-
-    red: ColorField
-    orange: ColorField
-    yellow: ColorField
-    lime: ColorField
-    green: ColorField
-    mint: ColorField
-    cyan: ColorField
-    azure: ColorField
-    blue: ColorField
-    violet: ColorField
-    magenta: ColorField
-    rose: ColorField
-
-
-class Bases(ColorMap):
-    """Configuration node for foregrounds and backgrounds."""
-
-    bg: ColorField
-    bg1: ColorField
-    bg2: ColorField
-    bg3: ColorField
-    bg4: ColorField
-    bg5: ColorField
-    bg6: ColorField
-    hidden: ColorField
-    subfg: ColorField
-    fg: ColorField
-    emph: ColorField
-    op2: ColorField
-    op1: ColorField
-    op: ColorField
-
-
-class Grayscale(ColorMap):
-    """Grayscale monochromatic named colors that are palette independent."""
-
-    black: ColorField = "oklch(0.10 0.01 220)"
-    darkgray: ColorField = "oklch(0.30 0.01 220)"
-    neutralgray: ColorField = "oklch(0.50 0.01 220)"
-    lightgray: ColorField = "oklch(0.70 0.01 220)"
-    white: ColorField = "oklch(0.995 0.003 220)"
 
 
 class PaletteMeta(BaseNode):
@@ -84,12 +39,12 @@ class PaletteColors(BaseNode):
 
     hue: Hues
     """Named main color hues."""
-    bright: Hues
-    """Named bright color variants."""
-    hl: Hues
-    """Name highlight color variants."""
     base: Bases
     """Named bases relative to the palette."""
+    bright: Hues = Hues.bright()
+    """Named bright color variants."""
+    hl: Hues = Hues.highlights()
+    """Name highlight color variants."""
     gs: Grayscale = Grayscale()
     """Grayscale colors."""
 
