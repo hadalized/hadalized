@@ -1,5 +1,5 @@
-from hadalized.web import WebColors
+from hadalized.web import CSSNamedColors
 
 
 def test_init():
-    assert WebColors()
+    assert CSSNamedColors()

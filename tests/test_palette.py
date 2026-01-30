@@ -1,5 +1,8 @@
-from hadalized.color import GamutInfo
 from hadalized.palette import Palette
+
+
+def test_palette_parse_is_idempotent(palette: Palette):
+    assert palette.parse().parse() == palette.parse()
 
 
 def test_palette_to(palette: Palette):
@@ -19,12 +22,6 @@ def test_palette_to(palette: Palette):
     assert isinstance(val, Palette)
     assert isinstance(leaf, str)
     assert leaf.startswith("oklch")
-
-    val = palette.to("gamut")
-    leaf = val.hue.red
-    assert isinstance(val, Palette)
-    assert isinstance(leaf, GamutInfo)
-    assert leaf.hex.startswith("#")
 
 
 def test_node_properties(palette: Palette):

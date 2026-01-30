@@ -5,7 +5,7 @@ from hadalized.writer import ThemeWriter
 
 
 def test_theme_writer_run_uses_cache(config: Config, build_config):
-    config = config.replace(builds={"neovim": build_config})
+    config = config.replace(builds={build_config.name: build_config})
     with ThemeWriter(config) as writer:
         written = writer.run()
         assert written
@@ -24,3 +24,11 @@ def test_writer_exits_with_exception(config: Config):
     with pytest.raises(ValueError):
         with ThemeWriter(config):
             raise ValueError("bomb")
+
+
+def test_writer_get_package_template(config: Config):
+    assert ThemeWriter(config).get_template("neovim.lua")
+
+
+def test_writer_get_fs_template(config: Config):
+    assert ThemeWriter(config).get_template("template.txt")
