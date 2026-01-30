@@ -1,4 +1,4 @@
-# hadalized
+# hadalized color theme build
 
 ## Introduction
 
@@ -49,9 +49,8 @@ just test
 - [x] Introduce proper cli as main entry point. (Done in v0.3 via cyclopts).
 - [x] Add targetted builds. For example, specify that only "neovim" themes are
   built. (Done in v0.3)
+- [ ] Support loading config and templates from xdg config dir.
+- [ ] cli: Add command to populate app config toml files.
 - [ ] Create example of a custom python config, e.g., for adding an app that
   is not supported in the builtin builds.
-- [ ] (?) Allow specifying a configuration file (py or toml) to pass to cli.
-  This might imply using BaseSettings. The current setup assumes a python
-  configuration file.
 

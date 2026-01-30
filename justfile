@@ -8,7 +8,6 @@ ed:
 fmt:
     uv run --exact ruff format src/ tests/
     uv run --exact ruff check --fix src/ tests/
-    # uv run ruff check --ignore=S --fix tests/
 
 check:
     uv run --exact ruff check src/ tests/

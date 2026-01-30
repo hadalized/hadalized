@@ -13,6 +13,7 @@ class BaseNode(BaseModel):
 
     model_config: ClassVar[ConfigDict] = ConfigDict(
         frozen=True,
+        extra="forbid",
     )
 
     _dumped: dict | None = PrivateAttr(None)
@@ -63,17 +64,6 @@ class BaseNode(BaseModel):
 
         """
         return hash(super())
-
-    def encode(self) -> bytes:
-        """Bytes of the model's JSON dump.
-
-        Returns:
-            Hashable bytes containing the content of the model.
-
-        """
-        if self._bytes is None:
-            self._bytes = self.model_dump_json().encode()
-        return self._bytes
 
     def replace(self, **kwargs) -> Self:
         """Create a new instance with input arguments merged in.

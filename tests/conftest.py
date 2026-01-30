@@ -23,7 +23,7 @@ def config(tmp_path) -> Config:
 
 @pytest.fixture
 def palette() -> Palette:
-    return _config.palettes["hadalized"]
+    return _config.get_palette("dark").parse()
 
 
 @pytest.fixture

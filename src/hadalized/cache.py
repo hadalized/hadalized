@@ -5,22 +5,20 @@ from contextlib import suppress
 from shutil import rmtree
 from typing import TYPE_CHECKING, Self
 
-import xdg_base_dirs as xdg
 from loguru import logger
 
 if TYPE_CHECKING:
     from pathlib import Path
-    from typing import ClassVar
+
+from hadalized import homedirs
 
 
 class CacheDB:
     """Base class for cache layers that utilize a sqlite db."""
 
-    default_dir: ClassVar[Path] = xdg.xdg_cache_home() / "hadalized"
-
     def __init__(
         self,
-        cache_dir: Path = default_dir,
+        cache_dir: Path | None = None,
         *,
         in_memory: bool = False,
     ):
@@ -34,7 +32,7 @@ class CacheDB:
                caching should take place in memory.
 
         """
-        self.cache_dir: Path = cache_dir
+        self.cache_dir: Path = cache_dir or homedirs.cache()
         self.in_memory: bool = in_memory
         self._db_file: Path = self.cache_dir / "builds.db"
         if not self.in_memory:
@@ -92,7 +90,10 @@ class Cache(CacheDB):
         with self._conn:
             self._conn.execute("""
                 CREATE TABLE IF NOT EXISTS
-                builds(path TEXT PRIMARY KEY, hash TEXT)""")
+                digests(path TEXT PRIMARY KEY, digest TEXT)""")
+            self._conn.execute("""
+                CREATE TABLE IF NOT EXISTS
+                palettes(name TEXT PRIMARY KEY, data TEXT)""")
 
     def add(self, path: str | Path, digest: str):
         """Add a (path, hash hexdigest) to the database.
@@ -102,8 +103,8 @@ class Cache(CacheDB):
         """
         with self._conn:
             self._conn.execute(
-                """INSERT INTO builds VALUES(:path, :digest)
-                ON CONFLICT(path) DO UPDATE SET hash=:digest""",
+                """INSERT INTO digests VALUES(:path, :digest)
+                ON CONFLICT(path) DO UPDATE SET digest=:digest""",
                 {
                     "path": str(path),
                     "digest": digest,
@@ -114,7 +115,7 @@ class Cache(CacheDB):
         """Remove a cache entry."""
         with self._conn:
             self._conn.execute(
-                """DELETE FROM builds WHERE path == ?""",
+                """DELETE FROM digests WHERE path == ?""",
                 [str(path)],
             )
 
@@ -128,8 +129,18 @@ class Cache(CacheDB):
         """
         with self._conn:
             cur = self._conn.execute(
-                """SELECT hash FROM builds WHERE path == ? LIMIT 1""",
+                """SELECT digest FROM digests WHERE path == ? LIMIT 1""",
                 [str(path)],
             )
             data = cur.fetchone()
         return data[0] if isinstance(data, tuple) else None
+
+    def get_digests(self) -> dict[str, str]:
+        """Obtain the contents of all cache build digests as a mapping.
+
+        Returns:
+            Mapping of path -> hash digest for all paths in the cache.
+
+        """
+        with self._conn:
+            return dict(self._conn.execute("SELECT * from digests"))

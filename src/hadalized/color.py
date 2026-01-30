@@ -2,46 +2,21 @@
 
 from collections.abc import Callable
 from enum import StrEnum, auto
-from typing import ClassVar, Self
+from typing import Self
 
 from coloraide import Color as ColorBase
-from pydantic import PrivateAttr
+from pydantic import Field, PrivateAttr
 
 from hadalized.base import BaseNode
 
-type ColorField = ColorInfo | GamutInfo | str
-"""A field value containing either full ColorInfo for every gamut,
-gamut specific color info, or a string representation of a color."""
+type ColorField = ColorInfo | str
+"""A field value containing either full ColorInfo for a specific space / gamut
+parseable string representation of a color."""
+
+type ColorFieldStr = str
 
 type ColorFieldHandler = Callable[[ColorField], ColorField]
-
-
-class ColorSpace(StrEnum):
-    """Colorspace constants."""
-
-    srgb = auto()
-    display_p3 = "display-p3"
-    oklch = auto()
-
-
-class ColorType(StrEnum):
-    """Constants representing nodes in a ColorInfo object.
-
-    Use in build directives to declaratively apply transformations to
-    Palette ColorField instances.
-    """
-
-    info = auto()
-    """Indicates a ColorField should be a full ColorInfo instance."""
-    gamut = auto()
-    """Indicates a ColorField should be a GamutInfo instance, typically
-    in the gamut defined by a Palette."""
-    hex = auto()
-    """Indicates a ColorField should be a RGB hex code in a specified gamut."""
-    oklch = auto()
-    """Indicates a ColorField should be a oklch css code in a specified gamut."""
-    css = auto()
-    """Indicates a ColorField should be a css code in a specified gamut."""
+"""A function that can be mapped across"""
 
 
 def _parse(val: str) -> ColorBase | None:
@@ -55,116 +30,74 @@ def _parse(val: str) -> ColorBase | None:
     return ColorBase(match.color) if match else None
 
 
-class GamutInfo(BaseNode):
-    """Detailed information about a color fit to a specific gamut."""
+class ColorSpace(StrEnum):
+    """Colorspace constants."""
 
-    fit_method: ClassVar[str] = "raytrace"
+    srgb = auto()
+    display_p3 = "display-p3"
+    oklch = auto()
 
-    name: str
-    """Name of the gamut."""
-    oklch: str
-    """The oklch value fitted to the gamut."""
-    raw: str
-    """The raw oklch value before fitting."""
-    css: str
-    """The css string within the gamut."""
-    hex: str
-    """Hex code."""
+
+class ColorFieldType(StrEnum):
+    """Constants representing nodes in a ColorInfo object.
+
+    Use in build directives to declaratively apply transformations to
+    Palette ColorMap fields.
+    """
+
+    identity = auto()
+    """Indicates a ColorField should be a full ColorInfo instance."""
+    hex = auto()
+    """Indicates a ColorField should be a RGB hex code in a specified gamut."""
+    oklch = auto()
+    """Indicates a ColorField should be a oklch css code in a specified gamut."""
+    css = auto()
+    """Indicates a ColorField should be a css code in a specified gamut."""
+
+
+class ColorInfo(BaseNode):
+    """Detailed information about a specific color.
+
+    Use the `parse` function to instantiate an instance rather than doing so
+    directly to ensure the raw value is parseable.
+    """
+
+    raw: str = Field(examples=["oklch(0.6 0.2 25)", "#010203"])
+    # parsed: ColorBase = Field(exclude=True)
+    """Parseable color definition, e.g., a css value."""
+    gamut: str = Field(
+        default=ColorSpace.srgb,
+        examples=["srgb", "display-p3"],
+    )
+    """Target gamut to fit the raw color definition to."""
+    raw_oklch: ColorFieldStr
+    """Raw input in the oklch colorspace."""
+    oklch: ColorFieldStr
+    """OKLCH value fit to the specified `gamut`."""
+    css: ColorFieldStr
+    """CSS value in the gamut."""
+    hex: ColorFieldStr
+    """24 or 32-bit hex representation for RGB gamuts."""
     is_in_gamut: bool
     """Indicates whether the raw value is within the color gamut."""
     max_oklch_chroma: float
     """The maximum oklch chroma value determined from the fit method."""
-
-    @classmethod
-    def fit(cls, val: ColorBase, gamut: str) -> ColorBase:
-        """Fit a color to the specified gamut.
-
-        Returns:
-            A new fitted instance.
-
-        """
-        return val.clone().fit(gamut, fit_method=cls.fit_method)
-
-    @staticmethod
-    def _to_hex(val: ColorBase) -> str:
-        """Convert RGB to their corresponding 24-bit or 34-bit hex color code.
-
-        Used primarily to extract a hex code for use
-        in programs--such as neovim--that only allow specifying colors
-        via RGB channels.
-
-        Returns:
-            A hex color code.
-
-        """
-        if val.space() != ColorSpace.srgb:
-            val = ColorBase(ColorSpace.srgb, val.coords(), alpha=val.alpha())
-        return val.to_string(hex=True)
-
-    @classmethod
-    def _max_chroma(cls, val: ColorBase, gamut: str) -> float:
-        lightness, _, hue = val.convert("oklch").coords()
-        cmax = ColorBase("oklch", (lightness, 0.4, hue))
-        return cls.fit(cmax, gamut).get("chroma")
-
-    @classmethod
-    def new(cls, val: ColorBase, gamut: str) -> Self:
-        """Gamut details for the input fit to the specified gamut.
-
-        Returns:
-            A GamutInfo instance.
-
-        """
-        if val.space() != ColorSpace.oklch:
-            val = val.convert(ColorSpace.oklch)
-        raw = val.convert(gamut)
-        oklch_fitted = cls.fit(val, gamut)
-        fitted = oklch_fitted.convert(gamut)
-        return cls(
-            name=gamut,
-            oklch=oklch_fitted.to_string(),
-            raw=raw.to_string(),
-            css=fitted.to_string(),
-            hex=cls._to_hex(fitted),
-            is_in_gamut=raw.in_gamut(),
-            max_oklch_chroma=cls._max_chroma(val, gamut),
-        )
-
-
-class ColorInfo(BaseNode):
-    """Detailed information about a specific color."""
-
-    gamut_keys: ClassVar[list[ColorSpace]] = [ColorSpace.display_p3, ColorSpace.srgb]
-
-    definition: str
-    """Parseable color definition, e.g., a css value."""
-    oklch: str
-    """Raw oklch value."""
-    gamuts: dict[str, GamutInfo]
     _color: ColorBase | None = PrivateAttr(None)
+    """Parsed instance."""
 
-    @property
-    def srgb(self) -> GamutInfo:
-        """The srgb GamutInfo."""
-        return self.gamuts[ColorSpace.srgb]
-
-    @property
-    def display_p3(self) -> GamutInfo:
-        """The display-p3 GamutInfo."""
-        return self.gamuts[ColorSpace.display_p3]
-
-    @property
     def color(self) -> ColorBase:
-        """The underlying coloraide.Color object derived from the string definition.
+        """Coloraide.Color object parsed from the definition.
 
         Raises:
-            ValueError: If the definition is not parseable.
+            ValueError: If `raw` is not parseable.
+
+        Returns:
+            A coloraide.Color instance.
 
         """
         if self._color is None:
-            parsed = _parse(self.definition)
-            if parsed is None:
-                raise ValueError(f"Unable to parse {self.definition=}")
+            if (parsed := _parse(self.raw)) is None:
+                raise ValueError(f"Unable to parse {self.raw=}")
             self._color = parsed
         return self._color
 
@@ -183,8 +116,14 @@ class ColorMap(BaseNode):
     methods.
     """
 
+    # TODO: Add a field type?
+
     def map(self, handler: ColorFieldHandler) -> Self:
         """Apply a generic color field handler to each field.
+
+        Example handlers enclude
+        - field extractors, e.g., mapping a parsed instance to specific field
+        - parsers, to convert from string color definitions to ColorInfo fields
 
         Returns:
             A new ColorMap instance with the handler applied to each field.
@@ -194,58 +133,125 @@ class ColorMap(BaseNode):
         return self.model_validate(data)
 
 
-def parse(val: str) -> ColorInfo:
+class Parser:
+    """Parse raw color strings."""
+
+    def __init__(self, gamut: str = ColorSpace.srgb, fit_method: str = "raytrace"):
+        """Set gamut and fit method."""
+        self.gamut = gamut
+        self.fit_method = fit_method
+
+    @staticmethod
+    def _to_hex(val: ColorBase) -> str:
+        """Convert RGB to their corresponding 24-bit or 34-bit hex color code.
+
+        Used primarily to extract a hex code for use
+        in programs--such as neovim--that only allow specifying colors
+        via RGB channels.
+
+        Returns:
+            A hex color code.
+
+        """
+        if val.space() != ColorSpace.srgb:
+            val = ColorBase(ColorSpace.srgb, val.coords(), alpha=val.alpha())
+        return val.to_string(hex=True)
+
+    def _fit(self, val: ColorBase) -> ColorBase:
+        return val.clone().fit(self.gamut, method=self.fit_method)
+
+    def _max_oklch_chroma(self, val: ColorBase) -> float:
+        """Determine maximum OKLCH chroma in the gamut for fixed lightness and hue.
+
+        Returns:
+            OKLCH chroma value.
+
+        """
+        if val.space() != ColorSpace.oklch:
+            val = val.convert("oklch")
+        lightness, _, hue = val.coords()
+        cmax = ColorBase("oklch", (lightness, 0.4, hue))
+        return self._fit(cmax).get("chroma")
+
+    def __call__(self, val: ColorField) -> ColorInfo:
+        """Parse a string representation of a color.
+
+        Returns:
+            A ColorInfo instance parsed from the input string. Raises a
+            ValueError if the input is not parseable.
+
+        Raises:
+            ValueError: if the input is not parseable.
+
+        """
+        if isinstance(val, ColorInfo):
+            return val
+
+        if (parsed := _parse(val)) is None:
+            raise ValueError(f"Unable to parse color from {val=}")
+
+        if parsed.space() != ColorSpace.oklch:
+            raw_oklch = parsed.convert(ColorSpace.oklch)
+        else:
+            raw_oklch = parsed
+
+        oklch_fit = self._fit(raw_oklch)
+        color = oklch_fit.convert(self.gamut)
+
+        inst = ColorInfo(
+            raw=val,
+            raw_oklch=raw_oklch.to_string(),
+            gamut=self.gamut,
+            oklch=oklch_fit.to_string(),
+            css=color.to_string(),
+            hex=self._to_hex(color),
+            is_in_gamut=raw_oklch.convert(self.gamut).in_gamut(),
+            max_oklch_chroma=self._max_oklch_chroma(raw_oklch),
+        )
+        inst._color = parsed
+        return inst
+
+
+def parse(
+    val: str,
+    gamut: str = ColorSpace.srgb,
+    fit_method: str = "raytrace",
+) -> ColorInfo:
     """Parse a string representation of a color.
+
+    Generate a ``Parser`` instance and call it on the input.
 
     Returns:
         A ColorInfo instance parsed from the input string. Raises a
         ValueError if the input is not parseable.
 
-    Raises:
-        ValueError: if the input is not parseable.
-
     """
-    parsed = _parse(val)
-    if parsed is None:
-        raise ValueError(f"Unable to parse color from {val=}")
-
-    definition = parsed.to_string()
-    if parsed.space() != ColorSpace.oklch:
-        parsed = parsed.convert(ColorSpace.oklch)
-
-    inst = ColorInfo(
-        definition=definition,
-        oklch=parsed.to_string(),
-        gamuts={k: GamutInfo.new(parsed, k) for k in ColorInfo.gamut_keys},
-    )
-    inst._color = parsed
-    return inst
+    return Parser(gamut=gamut, fit_method=fit_method)(val)
 
 
-def extract(
-    val: ColorField,
-    gamut: str,
-    color_type: str | ColorType,
-) -> ColorField:
-    """Extract fields from a ColorInfo or GamutInfo instance.
+def extractor(color_type: str | ColorFieldType) -> ColorFieldHandler:
+    """ColorFieldHandler factory.
 
-    The function is idempotent, but composing terminates at the first leaf.
-    For example, with f as this function
-        f(f(color, "srgb", ColorType.hex), gamut="display-p3", color_type=ColorType.css)
-    is the same as
-        f(color, "srgb", ColorType.hex)
-    as the latter call already extracts a leaf value. Similarly
-        f(f(color, "srgb", "gamut"), gamut="", color_type=ColorType.css)
-    is equivalent to
-        f(color, "srgb", ColorType.css)
+    Creates a function that extracts the specified field from a ColorInfo
+    instance. The handler passes strings through so that it is idempotent.
+
+    Example:
+        func = extractor("hex")
+        color = parse("oklch(0.5 0.1 25)")
+        assert color.hex == func(color)
+        assert color.hex == func(func(color))
+        identity_func = extractor("identity")
+        assert identity_func(color) is color
 
     Returns:
-        A new Colorfield, typically a value extracted from a ColorInfo
-        instance.
+        A function mapable over ColorMap instances that gets the specified
+        field from a ColorInfo object.
 
     """
-    if color_type == ColorType.info or isinstance(val, str):
-        return val
+    color_type = ColorFieldType(color_type)
+    is_identity = color_type == ColorFieldType.identity
 
-    node = val.gamuts[gamut] if isinstance(val, ColorInfo) else val
-    return node if color_type == ColorType.gamut else node[color_type]
+    def handler(val: ColorField) -> ColorField:
+        return val if is_identity or isinstance(val, str) else val[color_type]
+
+    return handler

@@ -5,8 +5,8 @@ def test_config_methods():
     conf = Config()
     assert conf.builds
     assert conf.palettes
-    assert conf.hex()
-    assert conf.css()
+    assert conf.to("hex")
+    assert conf.to("css")
 
 
 # @pytest.mark.parametrize(

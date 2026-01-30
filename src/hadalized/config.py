@@ -4,19 +4,140 @@ from enum import StrEnum, auto
 from pathlib import Path
 from typing import Self
 
-import xdg_base_dirs as xdg
 from pydantic import Field, PrivateAttr
 
-from hadalized.cache import Cache
-from hadalized.color import parse
+from hadalized import homedirs
+from hadalized.color import ColorMap
 from hadalized.palette import (
     BaseNode,
     Bases,
     ColorField,
-    ColorType,
+    ColorFieldType,
     Hues,
     Palette,
 )
+
+
+class Ref(ColorMap):
+    """Container for named color refs used in foregrounds and backgrounds."""
+
+    black: ColorField = "oklch(0.10 0.01 220)"
+    darkgray: ColorField = "oklch(0.30 0.01 220)"
+    darkslategray: ColorField = "oklch(0.30 0.03 220)"
+    gray: ColorField = "oklch(0.50 0.01 220)"
+    slategray: ColorField = "oklch(0.600 0.03 220)"
+    lightgray: ColorField = "oklch(0.70 0.01 220)"
+    lightslategray: ColorField = "oklch(0.700 0.02 220)"
+    white: ColorField = "oklch(0.995 0.01 220)"
+    b12: ColorField = "oklch(0.125 0.025 220)"
+    b13: ColorField = "oklch(0.135 0.025 220)"
+    b16: ColorField = "oklch(0.1625 0.025 220)"
+    b20: ColorField = "oklch(0.200 .030 220)"
+    b25: ColorField = "oklch(0.250 .030 220)"
+    b30: ColorField = "oklch(0.300 .035 220)"
+    b35: ColorField = "oklch(0.350 .035 220)"
+    g20: ColorField = "oklch(0.200 .010 220)"
+    g30: ColorField = "oklch(0.300 .010 220)"
+    g35: ColorField = "oklch(0.350 .010 220)"
+    g45: ColorField = "oklch(0.450 .010 220)"
+    g60: ColorField = "oklch(0.600 .010 220)"
+    g65: ColorField = "oklch(0.650 .010 220)"
+    g70: ColorField = "oklch(0.700 .010 220)"
+    g75: ColorField = "oklch(0.750 .010 220)"
+    g80: ColorField = "oklch(0.800 .010 220)"
+    g90: ColorField = "oklch(0.900 .010 220)"
+    s80: ColorField = "oklch(0.800 .020 100)"
+    s85: ColorField = "oklch(0.850 .020 100)"
+    s90: ColorField = "oklch(0.900 .020 100)"
+    s91: ColorField = "oklch(0.910 .020 100)"
+    s92: ColorField = "oklch(0.925 .020 100)"
+    s95: ColorField = "oklch(0.950 .020 100)"
+    s97: ColorField = "oklch(0.975 .015 100)"
+    s99: ColorField = "oklch(0.990 .010 100)"
+    s100: ColorField = "oklch(0.995 .010 100)"
+    w80: ColorField = "oklch(0.800 .005 100)"
+    w85: ColorField = "oklch(0.850 .005 100)"
+    w90: ColorField = "oklch(0.900 .005 100)"
+    w91: ColorField = "oklch(0.910 .005 100)"
+    w92: ColorField = "oklch(0.925 .005 100)"
+    w95: ColorField = "oklch(0.950 .005 100)"
+    w97: ColorField = "oklch(0.975 .005 100)"
+    w99: ColorField = "oklch(0.990 .005 100)"
+    w100: ColorField = "oklch(0.995 .005 100)"
+
+
+hues: dict[str, Hues] = {
+    "neutral": Hues(
+        red="oklch(0.575 0.185 25)",
+        orange="oklch(0.650 0.150 60)",
+        yellow="oklch(0.675 0.120 100)",
+        lime="oklch(0.650 0.130 115)",
+        green="oklch(0.575 0.165 130)",
+        mint="oklch(0.675 0.130 155)",
+        cyan="oklch(0.625 0.100 180)",
+        azure="oklch(0.675 0.110 225)",
+        blue="oklch(0.575 0.140 250)",
+        violet="oklch(0.575 0.185 290)",
+        magenta="oklch(0.575 0.185 330)",
+        rose="oklch(0.675 0.100 360)",
+    ),
+    "dark": Hues(
+        red="oklch(0.60 0.185 25)",
+        orange="oklch(0.650 0.150 60)",
+        yellow="oklch(0.700 0.120 100)",
+        lime="oklch(0.675 0.120 115)",
+        green="oklch(0.650 0.165 130)",
+        mint="oklch(0.715 0.130 155)",
+        cyan="oklch(0.650 0.100 180)",
+        azure="oklch(0.725 0.110 225)",
+        blue="oklch(0.625 0.150 250)",
+        violet="oklch(0.625 0.185 290)",
+        magenta="oklch(0.625 0.185 330)",
+        rose="oklch(0.700 0.100 360)",
+    ),
+    "light": Hues(
+        red="oklch(0.550 0.185 25)",
+        orange="oklch(0.650 0.150 60)",
+        yellow="oklch(0.650 0.120 100)",
+        lime="oklch(0.650 0.130 115)",
+        green="oklch(0.575 0.165 130)",
+        mint="oklch(0.650 0.130 155)",
+        cyan="oklch(0.550 0.100 180)",
+        azure="oklch(0.650 0.110 225)",
+        blue="oklch(0.575 0.140 250)",
+        violet="oklch(0.550 0.185 290)",
+        magenta="oklch(0.550 0.185 330)",
+        rose="oklch(0.625 0.100 360)",
+    ),
+    "hl": Hues(
+        red="oklch(0.800 0.100 25)",
+        orange="oklch(0.850 0.100 60)",
+        yellow="oklch(0.950 0.200 100)",
+        lime="oklch(0.855 0.100 115)",
+        green="oklch(0.85 0.100 130)",
+        mint="oklch(0.875 0.100 155)",
+        cyan="oklch(0.900 0.100 180)",
+        azure="oklch(0.875 0.100 225)",
+        blue="oklch(0.825 0.100 250)",
+        violet="oklch(0.825 0.200 290)",
+        magenta="oklch(0.825 0.200 330)",
+        rose="oklch(0.825 0.200 360)",
+    ),
+    "bright": Hues(
+        red="oklch(0.675 0.200 25)",
+        orange="oklch(0.75 0.175 60)",
+        yellow="oklch(0.80 0.165 100)",
+        lime="oklch(0.800 0.185 120)",
+        green="oklch(0.800 0.200 135)",
+        mint="oklch(0.800 0.195 155)",
+        cyan="oklch(0.800 0.145 180)",
+        azure="oklch(0.800 0.135 225)",
+        blue="oklch(0.800 0.100 250)",
+        violet="oklch(0.800 0.100 290)",
+        magenta="oklch(0.800 0.185 330)",
+        rose="oklch(0.800 0.120 360)",
+    ),
+}
 
 
 def default_palettes() -> dict[str, Palette]:
@@ -26,236 +147,122 @@ def default_palettes() -> dict[str, Palette]:
         A map of palette.name -> palette.
 
     """
-    hues: dict[str, Hues] = {
-        "neutral": Hues(
-            red=parse("oklch(0.575 0.185 25)"),
-            orange=parse("oklch(0.650 0.150 60)"),
-            yellow=parse("oklch(0.675 0.120 100)"),
-            lime=parse("oklch(0.650 0.130 115)"),
-            green=parse("oklch(0.575 0.165 130)"),
-            mint=parse("oklch(0.675 0.130 155)"),
-            cyan=parse("oklch(0.625 0.100 180)"),
-            azure=parse("oklch(0.675 0.110 225)"),
-            blue=parse("oklch(0.575 0.140 250)"),
-            violet=parse("oklch(0.575 0.185 290)"),
-            magenta=parse("oklch(0.575 0.185 330)"),
-            rose=parse("oklch(0.675 0.100 360)"),
-        ),
-        "dark": Hues(
-            red=parse("oklch(0.60 0.185 25)"),
-            orange=parse("oklch(0.650 0.150 60)"),
-            yellow=parse("oklch(0.700 0.120 100)"),
-            lime=parse("oklch(0.675 0.120 115)"),
-            green=parse("oklch(0.650 0.165 130)"),
-            mint=parse("oklch(0.715 0.130 155)"),
-            cyan=parse("oklch(0.650 0.100 180)"),
-            azure=parse("oklch(0.725 0.110 225)"),
-            blue=parse("oklch(0.625 0.150 250)"),
-            violet=parse("oklch(0.625 0.185 290)"),
-            magenta=parse("oklch(0.625 0.185 330)"),
-            rose=parse("oklch(0.700 0.100 360)"),
-        ),
-        "light": Hues(
-            red=parse("oklch(0.550 0.185 25)"),
-            orange=parse("oklch(0.650 0.150 60)"),
-            yellow=parse("oklch(0.650 0.120 100)"),
-            lime=parse("oklch(0.650 0.130 115)"),
-            green=parse("oklch(0.575 0.165 130)"),
-            mint=parse("oklch(0.650 0.130 155)"),
-            cyan=parse("oklch(0.550 0.100 180)"),
-            azure=parse("oklch(0.650 0.110 225)"),
-            blue=parse("oklch(0.575 0.140 250)"),
-            violet=parse("oklch(0.550 0.185 290)"),
-            magenta=parse("oklch(0.550 0.185 330)"),
-            rose=parse("oklch(0.625 0.100 360)"),
-        ),
-        "hl": Hues(
-            red=parse("oklch(0.800 0.100 25)"),
-            orange=parse("oklch(0.850 0.100 60)"),
-            yellow=parse("oklch(0.950 0.200 100)"),
-            lime=parse("oklch(0.855 0.100 115)"),
-            green=parse("oklch(0.85 0.100 130)"),
-            mint=parse("oklch(0.875 0.100 155)"),
-            cyan=parse("oklch(0.900 0.100 180)"),
-            azure=parse("oklch(0.875 0.100 225)"),
-            blue=parse("oklch(0.825 0.100 250)"),
-            violet=parse("oklch(0.825 0.200 290)"),
-            magenta=parse("oklch(0.825 0.200 330)"),
-            rose=parse("oklch(0.825 0.200 360)"),
-        ),
-        "bright": Hues(
-            red=parse("oklch(0.675 0.200 25)"),
-            orange=parse("oklch(0.75 0.200 60)"),
-            yellow=parse("oklch(0.80 0.200 100)"),
-            lime=parse("oklch(0.800 0.200 120)"),
-            green=parse("oklch(0.800 0.200 135)"),
-            mint=parse("oklch(0.800 0.200 155)"),
-            cyan=parse("oklch(0.800 0.200 180)"),
-            azure=parse("oklch(0.800 0.200 225)"),
-            blue=parse("oklch(0.800 0.200 250)"),
-            violet=parse("oklch(0.800 0.200 290)"),
-            magenta=parse("oklch(0.800 0.200 330)"),
-            rose=parse("oklch(0.800 0.200 360)"),
-        ),
-    }
-
-    class Ref:
-        """Container for named color refs used in foregrounds and backgrounds."""
-
-        black: ColorField = parse("oklch(0.10 0.01 220)")
-        darkgray: ColorField = parse("oklch(0.30 0.01 220)")
-        darkslategray: ColorField = "oklch(0.30 0.03 220)"
-        gray: ColorField = parse("oklch(0.50 0.01 220)")
-        slategray: ColorField = "oklch(0.600 0.03 220)"
-        lightgray: ColorField = parse("oklch(0.70 0.01 220)")
-        lightslategray: ColorField = "oklch(0.700 0.02 220)"
-        white: ColorField = parse("oklch(0.995 0.01 220)")
-        b12: ColorField = parse("oklch(0.125 0.025 220)")
-        b13: ColorField = parse("oklch(0.135 0.025 220)")
-        b16: ColorField = parse("oklch(0.1625 0.025 220)")
-        b20: ColorField = parse("oklch(0.200 .030 220)")
-        b25: ColorField = parse("oklch(0.250 .030 220)")
-        b30: ColorField = parse("oklch(0.300 .035 220)")
-        b35: ColorField = parse("oklch(0.350 .035 220)")
-        g20: ColorField = parse("oklch(0.200 .010 220)")
-        g30: ColorField = parse("oklch(0.300 .010 220)")
-        g35: ColorField = parse("oklch(0.350 .010 220)")
-        g45: ColorField = parse("oklch(0.450 .010 220)")
-        g60: ColorField = parse("oklch(0.600 .010 220)")
-        g65: ColorField = parse("oklch(0.650 .010 220)")
-        g70: ColorField = parse("oklch(0.700 .010 220)")
-        g75: ColorField = parse("oklch(0.750 .010 220)")
-        g80: ColorField = parse("oklch(0.800 .010 220)")
-        g90: ColorField = parse("oklch(0.900 .010 220)")
-        s80: ColorField = parse("oklch(0.800 .020 100)")
-        s85: ColorField = parse("oklch(0.850 .020 100)")
-        s90: ColorField = parse("oklch(0.900 .020 100)")
-        s91: ColorField = parse("oklch(0.910 .020 100)")
-        s92: ColorField = parse("oklch(0.925 .020 100)")
-        s95: ColorField = parse("oklch(0.950 .020 100)")
-        s97: ColorField = parse("oklch(0.975 .015 100)")
-        s99: ColorField = parse("oklch(0.990 .010 100)")
-        s100: ColorField = parse("oklch(0.995 .010 100)")
-        w80: ColorField = parse("oklch(0.800 .005 100)")
-        w85: ColorField = parse("oklch(0.850 .005 100)")
-        w90: ColorField = parse("oklch(0.900 .005 100)")
-        w91: ColorField = parse("oklch(0.910 .005 100)")
-        w92: ColorField = parse("oklch(0.925 .005 100)")
-        w95: ColorField = parse("oklch(0.950 .005 100)")
-        w97: ColorField = parse("oklch(0.975 .005 100)")
-        w99: ColorField = parse("oklch(0.990 .005 100)")
-        w100: ColorField = parse("oklch(0.995 .005 100)")
+    ref = Ref()
 
     # Palette definitions
-    pdark: Palette = Palette(
+    dark: Palette = Palette(
         name="hadalized",
         desc="Main dark theme with blueish solarized inspired backgrounds.",
         mode="dark",
         gamut="srgb",
+        aliases=["dark"],
         hue=hues["dark"],
         bright=hues["bright"],
         hl=hues["hl"],
         base=Bases(
-            bg=parse("oklch(0.13 0.025 220)"),
-            bg1=parse("oklch(0.14 0.03 220)"),
-            bg2=Ref.b16,
-            bg3=Ref.b20,
-            bg4=Ref.b25,
-            bg5=Ref.b30,
-            bg6=Ref.b35,
-            hidden=Ref.g45,
-            subfg=Ref.g70,
-            fg=Ref.w80,
-            emph=Ref.w85,
-            op2=Ref.s80,
-            op1=Ref.s85,
-            op=Ref.s90,
+            bg="oklch(0.13 0.025 220)",
+            bg1="oklch(0.14 0.03 220)",
+            bg2=ref.b16,
+            bg3=ref.b20,
+            bg4=ref.b25,
+            bg5=ref.b30,
+            bg6=ref.b35,
+            hidden=ref.g45,
+            subfg=ref.g70,
+            fg=ref.w80,
+            emph=ref.w85,
+            op2=ref.s80,
+            op1=ref.s85,
+            op=ref.s90,
         ),
     )
 
-    pgray: Palette = Palette(
+    gray: Palette = Palette(
         name="hadalized-gray",
         desc="Dark theme variant with more grayish backgrounds.",
         mode="dark",
-        gamut=pdark.gamut,
-        hue=pdark.hue,
-        bright=pdark.bright,
-        hl=pdark.hl,
+        gamut=dark.gamut,
+        aliases=["gray"],
+        hue=dark.hue,
+        bright=dark.bright,
+        hl=dark.hl,
         base=Bases(
-            bg=parse("oklch(0.13 0.005 220)"),
-            bg1=parse("oklch(0.14 0.005 220)"),
-            bg2=parse("oklch(0.16 0.005 220)"),
-            bg3=parse("oklch(0.20 0.005 220)"),
-            bg4=parse("oklch(0.25 0.005 220)"),
-            bg5=parse("oklch(0.30 0.005 220)"),
-            bg6=parse("oklch(0.35 0.005 220)"),
-            hidden=pdark.base.hidden,
-            subfg=pdark.base.subfg,
-            fg=pdark.base.fg,
-            emph=pdark.base.emph,
-            op2=Ref.w80,
-            op1=Ref.w85,
-            op=Ref.w90,
+            bg="oklch(0.13 0.005 220)",
+            bg1="oklch(0.14 0.005 220)",
+            bg2="oklch(0.16 0.005 220)",
+            bg3="oklch(0.20 0.005 220)",
+            bg4="oklch(0.25 0.005 220)",
+            bg5="oklch(0.30 0.005 220)",
+            bg6="oklch(0.35 0.005 220)",
+            hidden=dark.base.hidden,
+            subfg=dark.base.subfg,
+            fg=dark.base.fg,
+            emph=dark.base.emph,
+            op2=ref.w80,
+            op1=ref.w85,
+            op=ref.w90,
         ),
     )
 
-    pday: Palette = Palette(
+    day: Palette = Palette(
         name="hadalized-day",
         desc="Light theme variant with sunny backgrounds.",
         mode="light",
         gamut="srgb",
+        aliases=["day"],
         hue=hues["light"],
         bright=hues["bright"],
         hl=hues["hl"],
         base=Bases(
-            bg=Ref.s100,
-            bg1=Ref.s99,
-            bg2=Ref.s95,
-            bg3=Ref.s92,
-            bg4=Ref.s99,
-            bg5=Ref.s85,
-            bg6=Ref.s80,
-            hidden=Ref.g75,
-            subfg=Ref.g60,
-            fg=Ref.g30,
-            emph=Ref.g20,
-            op2=pdark.base.bg3,
-            op1=pdark.base.bg2,
-            op=pdark.base.bg,
+            bg=ref.s100,
+            bg1=ref.s99,
+            bg2=ref.s95,
+            bg3=ref.s92,
+            bg4=ref.s99,
+            bg5=ref.s85,
+            bg6=ref.s80,
+            hidden=ref.g75,
+            subfg=ref.g60,
+            fg=ref.g30,
+            emph=ref.g20,
+            op2=dark.base.bg3,
+            op1=dark.base.bg2,
+            op=dark.base.bg,
         ),
     )
 
-    pwhite: Palette = Palette(
+    white: Palette = Palette(
         name="hadalized-white",
         desc="Light theme variant with whiter backgrounds.",
         mode="light",
-        gamut=pday.gamut,
-        hue=pday.hue,
-        bright=pday.bright,
-        hl=pday.hl,
+        gamut=day.gamut,
+        aliases=["white"],
+        hue=day.hue,
+        bright=day.bright,
+        hl=day.hl,
         base=Bases(
-            bg=Ref.w100,
-            bg1=Ref.w99,
-            bg2=Ref.w95,
-            bg3=Ref.w92,
-            bg4=Ref.w99,
-            bg5=Ref.w85,
-            bg6=Ref.w80,
-            hidden=pday.base.hidden,
-            subfg=pday.base.subfg,
-            fg=pday.base.fg,
-            emph=pday.base.emph,
-            op2=pday.base.op2,
-            op1=pday.base.op1,
-            op=pday.base.op,
+            bg=ref.w100,
+            bg1=ref.w99,
+            bg2=ref.w95,
+            bg3=ref.w92,
+            bg4=ref.w99,
+            bg5=ref.w85,
+            bg6=ref.w80,
+            hidden=day.base.hidden,
+            subfg=day.base.subfg,
+            fg=day.base.fg,
+            emph=day.base.emph,
+            op2=day.base.op2,
+            op1=day.base.op1,
+            op=day.base.op,
         ),
     )
 
     return {
-        pdark.name: pdark,
-        pgray.name: pgray,
-        pday.name: pday,
-        pwhite.name: pwhite,
+        dark.name: dark,
+        gray.name: gray,
+        day.name: day,
+        white.name: white,
     }
 
 
@@ -339,20 +346,16 @@ class BuildConfig(BaseNode):
     )
     """Application name or theme category."""
     subdir: Path | None = None
-    """Build subdirectory where built files should be written."""
+    """Build subdir where theme files are placed. Defaults to `name`."""
     template: str
-    """Template filename."""
+    """Template filename relative to the templates directory."""
     filename: str = "{context.name}.{ext}"
-    """Name of file, including extension."""
-    file_ext: str | None = None
-    """File mimetype. If null, the template extension is used."""
+    """Template for output file, including extension."""
     context_type: ContextType = ContextType.palette
     """The underlying context type to pass to the template. """
-    color_type: ColorType = ColorType.hex
+    color_type: ColorFieldType = ColorFieldType.hex
     """How each Palette should be transformed when presented as context
     to the template."""
-    skip: bool = False
-    """If set to True, skip the directive."""
 
     def format_path(self, context: BaseNode) -> Path:
         """File output path relative to build directory.
@@ -368,40 +371,47 @@ class BuildConfig(BaseNode):
         fname = self.filename.format(context=context, ext=ext).rstrip(".")
         return (self.subdir or Path(self.name)) / fname
 
-    @staticmethod
-    def defaults() -> dict[str, BuildConfig]:
-        """Builtin build configs.
 
-        Returns:
-            The default build instructions used to generate theme files.
+def default_builds() -> dict[str, BuildConfig]:
+    """Builtin build configs.
 
-        """
-        return {
-            "neovim": BuildConfig(
-                name="neovim",
-                template="neovim.lua",
-            ),
-            "wezterm": BuildConfig(
-                name="wezterm",
-                template="wezterm.toml",
-            ),
-            "starship": BuildConfig(
-                name="starship",
-                template="starship.toml",
-                context_type=ContextType.full,
-                filename="starship.toml",
-            ),
-            "info": BuildConfig(
-                name="info",
-                template="palette_info.json",
-                color_type=ColorType.info,
-            ),
-            "html_samples": BuildConfig(
-                name="html_samples",
-                template="palette.html",
-                color_type=ColorType.css,
-            ),
-        }
+    Raises:
+        ValueError: If builtin builds have a name conflict.
+
+    Returns:
+        The default build instructions used to generate theme files.
+
+    """
+    builds = [
+        BuildConfig(
+            name="neovim",
+            template="neovim.lua",
+        ),
+        BuildConfig(
+            name="wezterm",
+            template="wezterm.toml",
+        ),
+        BuildConfig(
+            name="starship",
+            template="starship.toml",
+            filename="starship.toml",
+            context_type=ContextType.full,
+        ),
+        # BuildConfig(
+        #     name="info",
+        #     template="palette_info.json",
+        #     color_type=ColorFieldType.info,
+        # ),
+        BuildConfig(
+            name="html-samples",
+            template="palette.html",
+            color_type=ColorFieldType.css,
+        ),
+    ]
+    lookup = {x.name: x for x in builds}
+    if len(builds) != len(lookup):
+        raise ValueError("Default builds have conflicting keys.")
+    return lookup
 
 
 class Config(BaseNode):
@@ -412,27 +422,42 @@ class Config(BaseNode):
     """
 
     verbose: bool = False
-    build_dir: Path = xdg.xdg_state_home() / "hadalized" / "build"
+    build_dir: Path = Field(default_factory=homedirs.build)
     """Directory containing built theme files."""
-    cache_dir: Path = Cache.default_dir
+    cache_dir: Path = Field(default_factory=homedirs.cache)
     cache_in_memory: bool = False
+    disable_cache: bool = False
     """Application cache directory. Set to `None` to use an in-memory cache."""
-    template_dir: Path = Path("./templates")
+    template_dir: Path = Field(default_factory=homedirs.template)
     """Directory where templates will be searched for. If a template is not
     found in this directory, it will be loaded from those defined in the
     package."""
-    builds: dict[str, BuildConfig] = Field(
-        default_factory=BuildConfig.defaults,
-        exclude=True,
-    )
+    builds: dict[str, BuildConfig] = default_builds()
     """Build directives specifying how and which theme files are
     generated."""
-    palettes: dict[str, Palette] = Field(default_factory=default_palettes)
+    palettes: dict[str, Palette] = default_palettes()
     """Palette definitions."""
     terminal: TerminalConfig = TerminalConfig()
-    misc: dict = Field(default={})
+    _palette_lu: dict[str, Palette] = PrivateAttr(default={})
 
-    def to(self, color_type: ColorType) -> Self:
+    def model_post_init(self, context, /) -> None:
+        """Set lookups."""
+        for key, palette in self.palettes.items():
+            self._palette_lu[key] = palette
+            for alias in palette.aliases:
+                self._palette_lu[alias] = palette
+        return super().model_post_init(context)
+
+    def get_palette(self, name: str) -> Palette:
+        """Get Palette by name or alias.
+
+        Returns:
+            Palette instance.
+
+        """
+        return self._palette_lu[name]
+
+    def to(self, color_type: str | ColorFieldType) -> Self:
         """Transform the ColorFields to the specified type.
 
         Use to render themes that require the entire context (e.g., all palettes),
@@ -443,23 +468,15 @@ class Config(BaseNode):
             A new Config instance whose ColorFields match the input type.
 
         """
-        palettes = {k: p.to(color_type) for k, p in self.palettes.items()}
-        return self.replace(palettes=palettes)
+        return self.replace(
+            palettes={k: v.parse().to(color_type) for k, v in self.palettes.items()}
+        )
 
-    def hex(self) -> Self:
-        """Convert palette ColorField values to their hex representation.
-
-        Returns:
-            A new Config instance with color hex codes for ColorField values.
-
-        """
-        return self.to(ColorType.hex)
-
-    def css(self) -> Self:
-        """Convert palette ColorField values to their css representation.
+    def parse_palettes(self) -> Self:
+        """Parse each Palette to contain full ColorInfo.
 
         Returns:
-            A new Config instance with color css strings for ColorField values.
+            A new instance with each Palette a ParsedPalette instance.
 
         """
-        return self.to(ColorType.css)
+        return self.replace(palettes={k: v.parse() for k, v in self.palettes.items()})
