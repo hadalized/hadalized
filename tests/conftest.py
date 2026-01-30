@@ -2,7 +2,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 import pytest
 
-from hadalized.config import Config
+from hadalized.config import default_palettes, Config
 
 if TYPE_CHECKING:
     from hadalized.palette import Palette
@@ -24,6 +24,11 @@ def config(tmp_path) -> Config:
 @pytest.fixture
 def palette() -> Palette:
     return _config.get_palette("dark").parse()
+
+
+@pytest.fixture
+def raw_palette() -> Palette:
+    return default_palettes()["hadalized"]
 
 
 @pytest.fixture

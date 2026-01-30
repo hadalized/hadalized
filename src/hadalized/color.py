@@ -19,17 +19,6 @@ type ColorFieldHandler = Callable[[ColorField], ColorField]
 """A function that can be mapped across"""
 
 
-def _parse(val: str) -> ColorBase | None:
-    """Parse an input string into a coloraide.Color instance.
-
-    Returns:
-        The color instance if parseable else None.
-
-    """
-    match = ColorBase.match(val, fullmatch=True)
-    return ColorBase(match.color) if match else None
-
-
 class ColorSpace(StrEnum):
     """Colorspace constants."""
 
@@ -45,8 +34,8 @@ class ColorFieldType(StrEnum):
     Palette ColorMap fields.
     """
 
-    identity = auto()
-    """Indicates a ColorField should be a full ColorInfo instance."""
+    info = auto()
+    """Indicates a ColorField is a ``ColorInfo`` instance."""
     hex = auto()
     """Indicates a ColorField should be a RGB hex code in a specified gamut."""
     oklch = auto()
@@ -88,17 +77,12 @@ class ColorInfo(BaseNode):
     def color(self) -> ColorBase:
         """Coloraide.Color object parsed from the definition.
 
-        Raises:
-            ValueError: If `raw` is not parseable.
-
         Returns:
             A coloraide.Color instance.
 
         """
         if self._color is None:
-            if (parsed := _parse(self.raw)) is None:
-                raise ValueError(f"Unable to parse {self.raw=}")
-            self._color = parsed
+            self._color = ColorBase(self.raw)
         return self._color
 
 
@@ -117,6 +101,12 @@ class ColorMap(BaseNode):
     """
 
     # TODO: Add a field type?
+    _field_type: ColorFieldType | None = PrivateAttr(default=None)
+
+    @property
+    def field_type(self) -> ColorFieldType | None:
+        """What the field values represent."""
+        return self._field_type
 
     def map(self, handler: ColorFieldHandler) -> Self:
         """Apply a generic color field handler to each field.
@@ -130,7 +120,12 @@ class ColorMap(BaseNode):
 
         """
         data: dict[str, ColorField] = {k: handler(v) for k, v in self}
-        return self.model_validate(data)
+        inst = self.model_validate(data)
+        if isinstance(handler, Extractor):
+            inst._field_type = handler.field
+        elif isinstance(handler, Parser):
+            inst._field_type = ColorFieldType.info
+        return inst
 
 
 class Parser:
@@ -180,20 +175,14 @@ class Parser:
             A ColorInfo instance parsed from the input string. Raises a
             ValueError if the input is not parseable.
 
-        Raises:
-            ValueError: if the input is not parseable.
-
         """
         if isinstance(val, ColorInfo):
             return val
-
-        if (parsed := _parse(val)) is None:
-            raise ValueError(f"Unable to parse color from {val=}")
-
-        if parsed.space() != ColorSpace.oklch:
-            raw_oklch = parsed.convert(ColorSpace.oklch)
+        raw_color = ColorBase(val)
+        if raw_color.space() != ColorSpace.oklch:
+            raw_oklch = raw_color.convert(ColorSpace.oklch)
         else:
-            raw_oklch = parsed
+            raw_oklch = raw_color
 
         oklch_fit = self._fit(raw_oklch)
         color = oklch_fit.convert(self.gamut)
@@ -208,7 +197,7 @@ class Parser:
             is_in_gamut=raw_oklch.convert(self.gamut).in_gamut(),
             max_oklch_chroma=self._max_oklch_chroma(raw_oklch),
         )
-        inst._color = parsed
+        inst._color = raw_color
         return inst
 
 
@@ -229,29 +218,37 @@ def parse(
     return Parser(gamut=gamut, fit_method=fit_method)(val)
 
 
-def extractor(color_type: str | ColorFieldType) -> ColorFieldHandler:
-    """ColorFieldHandler factory.
+class Extractor:
+    """A ColorFieldHandler that extracts ``ColorInfo`` field values.
 
-    Creates a function that extracts the specified field from a ColorInfo
-    instance. The handler passes strings through so that it is idempotent.
-
-    Example:
-        func = extractor("hex")
-        color = parse("oklch(0.5 0.1 25)")
-        assert color.hex == func(color)
-        assert color.hex == func(func(color))
-        identity_func = extractor("identity")
-        assert identity_func(color) is color
-
-    Returns:
-        A function mapable over ColorMap instances that gets the specified
-        field from a ColorInfo object.
+    Attrs:
+        field (ColorFieldType): Which field will be extracted.
+        is_identity: Indicates whether the extractor is the identity function.
 
     """
-    color_type = ColorFieldType(color_type)
-    is_identity = color_type == ColorFieldType.identity
 
-    def handler(val: ColorField) -> ColorField:
-        return val if is_identity or isinstance(val, str) else val[color_type]
+    def __init__(self, field: str | ColorFieldType):
+        """Validate input as a ColorFieldType."""
+        self.field = ColorFieldType(field)
+        self.is_identity = self.field == ColorFieldType.info
 
-    return handler
+    def __call__(self, val: ColorField) -> ColorField:
+        """Extract field value from the input.
+
+        Calling twice results in a TypeError, to avoid uncaught errors
+        when chaining extractors. An expection is when the extractor
+        represents the identity function.
+
+        Raises:
+            TypeError: When the input is not a ``ColorInfo`` instance.
+
+        Returns:
+            A ``ColorInfo`` field value defined by the ``field`` attr
+            or the ColorInfo instance itself in case when the extractor is
+            the identity function.
+
+        """
+        if not isinstance(val, ColorInfo):
+            clsname = ColorInfo.__name__
+            raise TypeError(f"Input type {type(val)} is not a {clsname} instance.")
+        return val if self.is_identity else val[self.field]
