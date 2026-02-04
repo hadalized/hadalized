@@ -1,11 +1,6 @@
-from typing import TYPE_CHECKING
-
 import pytest
 
 from hadalized.color import Parser, parse
-
-if TYPE_CHECKING:
-    pass
 
 
 def test_parse_oklch():
@@ -26,7 +21,7 @@ def test_parse_fail():
 
 
 @pytest.mark.parametrize(
-    "val,gamut,in_gamut",
+    ("val", "gamut", "in_gamut"),
     [
         ("oklch(0.60 0.4 25)", "srgb", False),
         ("oklch(0.60 0.1 25)", "srgb", True),

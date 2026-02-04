@@ -1,8 +1,6 @@
 """Application cache layer."""
 
 import sqlite3
-from contextlib import suppress
-from shutil import rmtree
 from typing import TYPE_CHECKING, Self
 
 from loguru import logger
@@ -10,37 +8,35 @@ from loguru import logger
 if TYPE_CHECKING:
     from pathlib import Path
 
-from hadalized import homedirs
+from hadalized.options import Options
 
 
-class CacheDB:
-    """Base class for cache layers that utilize a sqlite db."""
+class Cache:
+    """Caching layer."""
 
-    def __init__(
-        self,
-        cache_dir: Path | None = None,
-        *,
-        in_memory: bool = False,
-    ):
+    def __init__(self, opts: Options | None = None):
         """Create a new instance.
 
         Args:
-            cache_dir: Where to store the database file.
-               If `None` is provided, an in-memory database
-               will be used.
-            in_memory: Keyword-only argument that specifies
-               caching should take place in memory.
+            opts: Runtime options controlling location of cache, whether to
+               use it, etc.
 
         """
-        self.cache_dir: Path = cache_dir or homedirs.cache()
-        self.in_memory: bool = in_memory
+        self.opt = opts or Options()
+        self.cache_dir: Path = self.opt.cache_dir
         self._db_file: Path = self.cache_dir / "builds.db"
-        if not self.in_memory:
+        if not self.opt.cache_in_memory:
             self.cache_dir.mkdir(parents=True, exist_ok=True)
         self._conn: sqlite3.Connection
 
     def _setup(self):
-        """Subclass defined function to create necessary tables."""
+        with self._conn:
+            self._conn.execute("""
+                CREATE TABLE IF NOT EXISTS
+                digests(path TEXT PRIMARY KEY, digest TEXT)""")
+            # self._conn.execute("""
+            #     CREATE TABLE IF NOT EXISTS
+            #     palettes(name TEXT PRIMARY KEY, data TEXT)""")
 
     def connect(self) -> Self:
         """Connect to the underlying sqlite database.
@@ -49,7 +45,7 @@ class CacheDB:
             The connected instance.
 
         """
-        file = ":memory:" if self.in_memory else self._db_file
+        file = ":memory:" if self.opt.cache_in_memory else self._db_file
         self._conn = sqlite3.connect(file)
         self._setup()
         return self
@@ -57,43 +53,6 @@ class CacheDB:
     def close(self):
         """Close the database connection."""
         self._conn.close()
-
-    def clear(self):
-        """Clear the cache contents."""
-        if not self.in_memory:
-            logger.info(f"Clearing cache directory {self.cache_dir}")
-            self.close()
-            with suppress(FileNotFoundError):
-                rmtree(self.cache_dir)
-
-    def __enter__(self) -> Self:
-        """Connect to the database.
-
-        Returns:
-            The connected instance.
-
-        """
-        self.connect()
-        return self
-
-    def __exit__(self, exc_type, exc_value, traceback):
-        """Close the database connection."""
-        if exc_type is not None:
-            logger.error((exc_type, exc_value, traceback))
-        self.close()
-
-
-class Cache(CacheDB):
-    """Caching layer for built themes."""
-
-    def _setup(self):
-        with self._conn:
-            self._conn.execute("""
-                CREATE TABLE IF NOT EXISTS
-                digests(path TEXT PRIMARY KEY, digest TEXT)""")
-            self._conn.execute("""
-                CREATE TABLE IF NOT EXISTS
-                palettes(name TEXT PRIMARY KEY, data TEXT)""")
 
     def add(self, path: str | Path, digest: str):
         """Add a (path, hash hexdigest) to the database.
@@ -144,3 +103,19 @@ class Cache(CacheDB):
         """
         with self._conn:
             return dict(self._conn.execute("SELECT * from digests"))
+
+    def __enter__(self) -> Self:
+        """Connect to the database.
+
+        Returns:
+            The connected instance.
+
+        """
+        self.connect()
+        return self
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        """Close the database connection."""
+        if exc_type is not None:
+            logger.error((exc_type, exc_value, traceback))
+        self.close()

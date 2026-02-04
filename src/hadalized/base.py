@@ -1,46 +1,56 @@
 """Base container for all model classes."""
 
-from importlib.metadata import version
 from typing import ClassVar, Self
 
-from pydantic import BaseModel, ConfigDict, PrivateAttr
+from pydantic import PrivateAttr
+from pydantic_settings import (
+    BaseSettings,
+    PydanticBaseSettingsSource,
+    SettingsConfigDict,
+    # TomlConfigSettingsSource,
+)
 
-_version = version("hadalized")
+from hadalized.const import APP_NAME, APP_VERSION
 
 
-class BaseNode(BaseModel):
-    """An extension of pydantic.BaseModel that all model classes inherit."""
+class BaseNode(BaseSettings):
+    """An extension of BaseSettings that all model classes inherit.
 
-    model_config: ClassVar[ConfigDict] = ConfigDict(
+    Unless overriden, by default only initialization settings are respected.
+
+    Full setting sources are exposed in the ``UserConfig`` subclass.
+    """
+
+    model_config: ClassVar[SettingsConfigDict] = SettingsConfigDict(
         frozen=True,
         extra="forbid",
     )
 
-    _dumped: dict | None = PrivateAttr(None)
-    _bytes: bytes | None = PrivateAttr(None)
+    _hash: int | None = PrivateAttr(default=None)
+    """Cached hash computation so that instances can be passed to cached
+    functions and used in dicts."""
+
+    @classmethod
+    def settings_customise_sources(
+        cls,
+        settings_cls: type[BaseSettings],
+        init_settings: PydanticBaseSettingsSource,
+        env_settings: PydanticBaseSettingsSource,
+        dotenv_settings: PydanticBaseSettingsSource,
+        file_secret_settings: PydanticBaseSettingsSource,
+    ) -> tuple[PydanticBaseSettingsSource, ...]:
+        """Set source loading priority.
+
+        Returns:
+            Priority order in which config settings are loaded.
+
+        """
+        return (init_settings,)
 
     @property
-    def package_version(self) -> str:
-        """Hadalized package version."""
-        return _version
-
-    def __len__(self) -> int:
-        """Length.
-
-        Returns:
-            The number of fields defined by the model.
-
-        """
-        return len(self.__class__.model_fields)
-
-    def __getitem__(self, key: str):
-        """Provide dict-like lookup for all models.
-
-        Returns:
-            The field specified by the input key.
-
-        """
-        return getattr(self, key.replace("-", "_"))
+    def app_info(self) -> str:
+        """App name and version."""
+        return f"{APP_NAME} v{APP_VERSION}"
 
     def model_dump_lua(self) -> str:
         """Dump the model as a lua table.
@@ -54,6 +64,24 @@ class BaseNode(BaseModel):
         # TODO: Unclear if we want to import luadata just for this
         return luadata.serialize(self.model_dump(mode="json"), indent="  ")
 
+    def replace(self, **kwargs) -> Self:
+        """Create a new instance with input arguments merged in.
+
+        Returns:
+            A new instance.
+
+        """
+        return self.model_validate(self.model_dump() | kwargs)
+
+    def __getitem__(self, key: str):
+        """Provide dict-like lookup for all models.
+
+        Returns:
+            The field specified by the input key.
+
+        """
+        return getattr(self, key)
+
     def __hash__(self) -> int:
         """Make an instance hashable for use in cache and dict lookups.
 
@@ -63,14 +91,47 @@ class BaseNode(BaseModel):
             The BaseModel hash.
 
         """
-        return hash(super())
+        if self._hash is None:
+            self._hash = hash(self.model_dump_json())
+        return self._hash
 
-    def replace(self, **kwargs) -> Self:
-        """Create a new instance with input arguments merged in.
+    def __len__(self) -> int:
+        """Report the number of model fields.
 
         Returns:
-            A new instance.
+            The length of the set of model fields.
 
         """
-        new_kwargs = self.model_dump() | kwargs
-        return self.__class__.model_validate(new_kwargs)
+        return len(self.__class__.model_fields)
+
+    def __or__(self, other: BaseNode) -> Self:
+        """Shallow merge explicitly set fields.
+
+        Only the explicitly set fields of ``other`` are merged in.
+
+        Args:
+            other: An instance of the same type or parent type to ``self``.
+
+        Returns:
+            A new instance with the set fields of `other` merged in.
+
+        """
+        merged = self.model_dump(exclude_unset=True) | other.model_dump(
+            exclude_unset=True
+        )
+        return self.model_validate(merged)
+
+    # def merge(self, parent: BaseNode) -> Self:
+    #     """Shallow merge a parent instance.
+    #
+    #     Args:
+    #         parent: A model with a subset of the fields defined in the
+    #             instance.
+    #
+    #     Returns:
+    #         A new instance of the same type as the instance with the set
+    #         parent fields.
+    #
+    #     """
+    #     merged = self.model_dump() | parent.model_dump(exclude_unset=True)
+    #     return self.model_validate(merged)

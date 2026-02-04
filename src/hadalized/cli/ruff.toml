@@ -1,5 +1,0 @@
-[lint]
-ignore = [
-    "FBT001",  # bool args
-    "FBT002",  # bool args
-]

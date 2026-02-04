@@ -6,12 +6,17 @@ ed:
     source .venv/bin/activate && nvim src/hadalized/config.py
 
 fmt:
-    uv run --exact ruff format src/ tests/
-    uv run --exact ruff check --fix src/ tests/
+    uv format -- src/ tests/
+    # uv run --exact ruff format src/ tests/
+    ruff check --fix src/ tests/
+    # uv run --exact ruff check --fix src/ tests/
 
 check:
-    uv run --exact ruff check src/ tests/
-    uv run --exact ty check src/ tests/
+    # ruff check src/ tests/
+    uv format --check -- src/ tests/
+    ty check src/ tests/
+    # uv run --exact ruff check src/ tests/
+    # uv run --exact ty check src/ tests/
 
 test:
     uv run --exact pytest
