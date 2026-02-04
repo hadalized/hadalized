@@ -5,7 +5,7 @@ build-backend = "uv_build"
 
 [project]
 name = "hadalized"
-version = "0.4.3"
+version = "0.4.4"
 description = "Hadalized color theme builder."
 readme = "README.md"
 authors = [
@@ -25,6 +25,7 @@ classifiers = [
   "Programming Language :: Python :: 3.14",
   "Programming Language :: Python :: 3 :: Only",
 ]
+license = "MIT-0"
 license-files = [
   "LICENSE",
 
