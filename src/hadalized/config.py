@@ -2,21 +2,21 @@
 
 from enum import StrEnum, auto
 from pathlib import Path
-from typing import Self
+from typing import Any, Self
 
-import xdg_base_dirs as xdg
 from pydantic import Field, PrivateAttr
-
-from hadalized.cache import Cache
-from hadalized.color import parse
-from hadalized.palette import (
-    BaseNode,
-    Bases,
-    ColorField,
-    ColorType,
-    Hues,
-    Palette,
+from pydantic_settings import (
+    BaseSettings,
+    PydanticBaseSettingsSource,
+    SettingsConfigDict,
+    TomlConfigSettingsSource,
 )
+
+from hadalized import homedirs
+from hadalized.base import BaseNode
+from hadalized.color import Bases, ColorFieldType, Hues, Ref
+from hadalized.options import Options
+from hadalized.palette import Palette
 
 
 def default_palettes() -> dict[str, Palette]:
@@ -26,214 +26,55 @@ def default_palettes() -> dict[str, Palette]:
         A map of palette.name -> palette.
 
     """
-    hues: dict[str, Hues] = {
-        "neutral": Hues(
-            red=parse("oklch(0.575 0.185 25)"),
-            orange=parse("oklch(0.650 0.150 60)"),
-            yellow=parse("oklch(0.675 0.120 100)"),
-            lime=parse("oklch(0.650 0.130 115)"),
-            green=parse("oklch(0.575 0.165 130)"),
-            mint=parse("oklch(0.675 0.130 155)"),
-            cyan=parse("oklch(0.625 0.100 180)"),
-            azure=parse("oklch(0.675 0.110 225)"),
-            blue=parse("oklch(0.575 0.140 250)"),
-            violet=parse("oklch(0.575 0.185 290)"),
-            magenta=parse("oklch(0.575 0.185 330)"),
-            rose=parse("oklch(0.675 0.100 360)"),
-        ),
-        "dark": Hues(
-            red=parse("oklch(0.60 0.185 25)"),
-            orange=parse("oklch(0.650 0.150 60)"),
-            yellow=parse("oklch(0.700 0.120 100)"),
-            lime=parse("oklch(0.675 0.120 115)"),
-            green=parse("oklch(0.650 0.165 130)"),
-            mint=parse("oklch(0.715 0.130 155)"),
-            cyan=parse("oklch(0.650 0.100 180)"),
-            azure=parse("oklch(0.725 0.110 225)"),
-            blue=parse("oklch(0.625 0.150 250)"),
-            violet=parse("oklch(0.625 0.185 290)"),
-            magenta=parse("oklch(0.625 0.185 330)"),
-            rose=parse("oklch(0.700 0.100 360)"),
-        ),
-        "light": Hues(
-            red=parse("oklch(0.550 0.185 25)"),
-            orange=parse("oklch(0.650 0.150 60)"),
-            yellow=parse("oklch(0.650 0.120 100)"),
-            lime=parse("oklch(0.650 0.130 115)"),
-            green=parse("oklch(0.575 0.165 130)"),
-            mint=parse("oklch(0.650 0.130 155)"),
-            cyan=parse("oklch(0.550 0.100 180)"),
-            azure=parse("oklch(0.650 0.110 225)"),
-            blue=parse("oklch(0.575 0.140 250)"),
-            violet=parse("oklch(0.550 0.185 290)"),
-            magenta=parse("oklch(0.550 0.185 330)"),
-            rose=parse("oklch(0.625 0.100 360)"),
-        ),
-        "hl": Hues(
-            red=parse("oklch(0.800 0.100 25)"),
-            orange=parse("oklch(0.850 0.100 60)"),
-            yellow=parse("oklch(0.950 0.200 100)"),
-            lime=parse("oklch(0.855 0.100 115)"),
-            green=parse("oklch(0.85 0.100 130)"),
-            mint=parse("oklch(0.875 0.100 155)"),
-            cyan=parse("oklch(0.900 0.100 180)"),
-            azure=parse("oklch(0.875 0.100 225)"),
-            blue=parse("oklch(0.825 0.100 250)"),
-            violet=parse("oklch(0.825 0.200 290)"),
-            magenta=parse("oklch(0.825 0.200 330)"),
-            rose=parse("oklch(0.825 0.200 360)"),
-        ),
-        "bright": Hues(
-            red=parse("oklch(0.675 0.200 25)"),
-            orange=parse("oklch(0.75 0.200 60)"),
-            yellow=parse("oklch(0.80 0.200 100)"),
-            lime=parse("oklch(0.800 0.200 120)"),
-            green=parse("oklch(0.800 0.200 135)"),
-            mint=parse("oklch(0.800 0.200 155)"),
-            cyan=parse("oklch(0.800 0.200 180)"),
-            azure=parse("oklch(0.800 0.200 225)"),
-            blue=parse("oklch(0.800 0.200 250)"),
-            violet=parse("oklch(0.800 0.200 290)"),
-            magenta=parse("oklch(0.800 0.200 330)"),
-            rose=parse("oklch(0.800 0.200 360)"),
-        ),
-    }
-
-    class Ref:
-        """Container for named color refs used in foregrounds and backgrounds."""
-
-        black: ColorField = parse("oklch(0.10 0.01 220)")
-        darkgray: ColorField = parse("oklch(0.30 0.01 220)")
-        darkslategray: ColorField = "oklch(0.30 0.03 220)"
-        gray: ColorField = parse("oklch(0.50 0.01 220)")
-        slategray: ColorField = "oklch(0.600 0.03 220)"
-        lightgray: ColorField = parse("oklch(0.70 0.01 220)")
-        lightslategray: ColorField = "oklch(0.700 0.02 220)"
-        white: ColorField = parse("oklch(0.995 0.01 220)")
-        b12: ColorField = parse("oklch(0.125 0.025 220)")
-        b13: ColorField = parse("oklch(0.135 0.025 220)")
-        b16: ColorField = parse("oklch(0.1625 0.025 220)")
-        b20: ColorField = parse("oklch(0.200 .030 220)")
-        b25: ColorField = parse("oklch(0.250 .030 220)")
-        b30: ColorField = parse("oklch(0.300 .035 220)")
-        b35: ColorField = parse("oklch(0.350 .035 220)")
-        g20: ColorField = parse("oklch(0.200 .010 220)")
-        g30: ColorField = parse("oklch(0.300 .010 220)")
-        g35: ColorField = parse("oklch(0.350 .010 220)")
-        g45: ColorField = parse("oklch(0.450 .010 220)")
-        g60: ColorField = parse("oklch(0.600 .010 220)")
-        g65: ColorField = parse("oklch(0.650 .010 220)")
-        g70: ColorField = parse("oklch(0.700 .010 220)")
-        g75: ColorField = parse("oklch(0.750 .010 220)")
-        g80: ColorField = parse("oklch(0.800 .010 220)")
-        g90: ColorField = parse("oklch(0.900 .010 220)")
-        s80: ColorField = parse("oklch(0.800 .020 100)")
-        s85: ColorField = parse("oklch(0.850 .020 100)")
-        s90: ColorField = parse("oklch(0.900 .020 100)")
-        s91: ColorField = parse("oklch(0.910 .020 100)")
-        s92: ColorField = parse("oklch(0.925 .020 100)")
-        s95: ColorField = parse("oklch(0.950 .020 100)")
-        s97: ColorField = parse("oklch(0.975 .015 100)")
-        s99: ColorField = parse("oklch(0.990 .010 100)")
-        s100: ColorField = parse("oklch(0.995 .010 100)")
-        w80: ColorField = parse("oklch(0.800 .005 100)")
-        w85: ColorField = parse("oklch(0.850 .005 100)")
-        w90: ColorField = parse("oklch(0.900 .005 100)")
-        w91: ColorField = parse("oklch(0.910 .005 100)")
-        w92: ColorField = parse("oklch(0.925 .005 100)")
-        w95: ColorField = parse("oklch(0.950 .005 100)")
-        w97: ColorField = parse("oklch(0.975 .005 100)")
-        w99: ColorField = parse("oklch(0.990 .005 100)")
-        w100: ColorField = parse("oklch(0.995 .005 100)")
-
     # Palette definitions
-    pdark: Palette = Palette(
+    dark: Palette = Palette(
         name="hadalized",
         desc="Main dark theme with blueish solarized inspired backgrounds.",
         mode="dark",
         gamut="srgb",
-        hue=hues["dark"],
-        bright=hues["bright"],
-        hl=hues["hl"],
-        base=Bases(
-            bg=parse("oklch(0.13 0.025 220)"),
-            bg1=parse("oklch(0.14 0.03 220)"),
-            bg2=Ref.b16,
-            bg3=Ref.b20,
-            bg4=Ref.b25,
-            bg5=Ref.b30,
-            bg6=Ref.b35,
-            hidden=Ref.g45,
-            subfg=Ref.g70,
-            fg=Ref.w80,
-            emph=Ref.w85,
-            op2=Ref.s80,
-            op1=Ref.s85,
-            op=Ref.s90,
-        ),
+        aliases=["dark"],
+        hue=Hues.dark(),
+        base=Bases.dark(),
     )
 
-    pgray: Palette = Palette(
+    gray: Palette = Palette(
         name="hadalized-gray",
         desc="Dark theme variant with more grayish backgrounds.",
         mode="dark",
-        gamut=pdark.gamut,
-        hue=pdark.hue,
-        bright=pdark.bright,
-        hl=pdark.hl,
-        base=Bases(
-            bg=parse("oklch(0.13 0.005 220)"),
-            bg1=parse("oklch(0.14 0.005 220)"),
-            bg2=parse("oklch(0.16 0.005 220)"),
-            bg3=parse("oklch(0.20 0.005 220)"),
-            bg4=parse("oklch(0.25 0.005 220)"),
-            bg5=parse("oklch(0.30 0.005 220)"),
-            bg6=parse("oklch(0.35 0.005 220)"),
-            hidden=pdark.base.hidden,
-            subfg=pdark.base.subfg,
-            fg=pdark.base.fg,
-            emph=pdark.base.emph,
-            op2=Ref.w80,
-            op1=Ref.w85,
-            op=Ref.w90,
+        gamut=dark.gamut,
+        aliases=["gray"],
+        hue=Hues.dark(),
+        base=Bases.dark()
+        | Bases(
+            bg=Ref.w13,
+            bg1=Ref.w14,
+            bg2=Ref.w16,
+            bg3=Ref.w20,
+            bg4=Ref.w25,
+            bg5=Ref.w30,
+            bg6=Ref.w35,
         ),
     )
 
-    pday: Palette = Palette(
+    day: Palette = Palette(
         name="hadalized-day",
         desc="Light theme variant with sunny backgrounds.",
         mode="light",
         gamut="srgb",
-        hue=hues["light"],
-        bright=hues["bright"],
-        hl=hues["hl"],
-        base=Bases(
-            bg=Ref.s100,
-            bg1=Ref.s99,
-            bg2=Ref.s95,
-            bg3=Ref.s92,
-            bg4=Ref.s99,
-            bg5=Ref.s85,
-            bg6=Ref.s80,
-            hidden=Ref.g75,
-            subfg=Ref.g60,
-            fg=Ref.g30,
-            emph=Ref.g20,
-            op2=pdark.base.bg3,
-            op1=pdark.base.bg2,
-            op=pdark.base.bg,
-        ),
+        aliases=["day"],
+        hue=Hues.light(),
+        base=Bases.light(),
     )
 
-    pwhite: Palette = Palette(
+    white: Palette = Palette(
         name="hadalized-white",
         desc="Light theme variant with whiter backgrounds.",
         mode="light",
-        gamut=pday.gamut,
-        hue=pday.hue,
-        bright=pday.bright,
-        hl=pday.hl,
-        base=Bases(
+        gamut=day.gamut,
+        aliases=["white"],
+        hue=Hues.light(),
+        base=day.base
+        | Bases(
             bg=Ref.w100,
             bg1=Ref.w99,
             bg2=Ref.w95,
@@ -241,21 +82,14 @@ def default_palettes() -> dict[str, Palette]:
             bg4=Ref.w99,
             bg5=Ref.w85,
             bg6=Ref.w80,
-            hidden=pday.base.hidden,
-            subfg=pday.base.subfg,
-            fg=pday.base.fg,
-            emph=pday.base.emph,
-            op2=pday.base.op2,
-            op1=pday.base.op1,
-            op=pday.base.op,
         ),
     )
 
     return {
-        pdark.name: pdark,
-        pgray.name: pgray,
-        pday.name: pday,
-        pwhite.name: pwhite,
+        dark.name: dark,
+        gray.name: gray,
+        day.name: day,
+        white.name: white,
     }
 
 
@@ -288,7 +122,7 @@ class ANSIMap(BaseNode):
     """Typically represents bright cyan."""
     _idx_to_name: dict[int, str] = PrivateAttr({})
 
-    def model_post_init(self, context, /) -> None:
+    def model_post_init(self, context: Any, /) -> None:
         """Model post init."""
         super().model_post_init(context)
         self._idx_to_name = {idx: name for name, idx in self}
@@ -339,20 +173,43 @@ class BuildConfig(BaseNode):
     )
     """Application name or theme category."""
     subdir: Path | None = None
-    """Build subdirectory where built files should be written."""
-    template: str
-    """Template filename."""
-    filename: str = "{context.name}.{ext}"
-    """Name of file, including extension."""
-    file_ext: str | None = None
-    """File mimetype. If null, the template extension is used."""
+    """Build sub-directory where theme files are placed. Defaults to `name`."""
+    template: Path
+    """Template filename relative to the templates directory."""
+    filename: str | None = Field(
+        default=None,
+        examples=[
+            "{context.name}.{template_ext}",  # default
+            "starship-alt.toml",
+        ],
+    )
+    """Output file name, including extension. For builds
+    that generate palette specific theme files, the default filename is of the
+    form `{palette.name}.{template.extension}`. For those that take in
+    all palettes into the context, the filename defaults to the underlying
+    template name.
+    """
     context_type: ContextType = ContextType.palette
-    """The underlying context type to pass to the template. """
-    color_type: ColorType = ColorType.hex
+    """The underlying context type to pass to the template."""
+    color_type: ColorFieldType = ColorFieldType.hex
     """How each Palette should be transformed when presented as context
     to the template."""
-    skip: bool = False
-    """If set to True, skip the directive."""
+    _fname: str = PrivateAttr(default="")
+
+    def model_post_init(self, context: Any, /) -> None:
+        """Construct filename template."""
+        filename = self.filename or ""
+        if not self.filename:
+            if self.context_type == ContextType.palette:
+                filename = "{context.name}.{ext}"
+            else:
+                filename = str(self.template)
+
+        # Infer extension from template file extension.
+        if filename.endswith(".{ext}"):
+            filename = filename.replace(".{ext}", self.template.suffix)
+        self._fname = filename.rstrip(".")
+        return super().model_post_init(context)
 
     def format_path(self, context: BaseNode) -> Path:
         """File output path relative to build directory.
@@ -361,78 +218,109 @@ class BuildConfig(BaseNode):
             The absolute path where a file should be written.
 
         """
-        if self.filename.endswith("{ext}"):
-            _, _, ext = self.template.rpartition(".")
-        else:
-            ext = ""
-        fname = self.filename.format(context=context, ext=ext).rstrip(".")
+        fname = self._fname.format(context=context).rstrip(".")
         return (self.subdir or Path(self.name)) / fname
 
-    @staticmethod
-    def defaults() -> dict[str, BuildConfig]:
-        """Builtin build configs.
 
-        Returns:
-            The default build instructions used to generate theme files.
+def default_builds() -> dict[str, BuildConfig]:
+    """Builtin build configs.
 
-        """
-        return {
-            "neovim": BuildConfig(
-                name="neovim",
-                template="neovim.lua",
-            ),
-            "wezterm": BuildConfig(
-                name="wezterm",
-                template="wezterm.toml",
-            ),
-            "starship": BuildConfig(
-                name="starship",
-                template="starship.toml",
-                context_type=ContextType.full,
-                filename="starship.toml",
-            ),
-            "info": BuildConfig(
-                name="info",
-                template="palette_info.json",
-                color_type=ColorType.info,
-            ),
-            "html_samples": BuildConfig(
-                name="html_samples",
-                template="palette.html",
-                color_type=ColorType.css,
-            ),
-        }
+    Returns:
+        The default build instructions used to generate theme files.
+
+    """
+    return {
+        "neovim": BuildConfig(
+            name="neovim",
+            template=Path("neovim.lua"),
+        ),
+        "wezterm": BuildConfig(
+            name="wezterm",
+            template=Path("wezterm.toml"),
+        ),
+        "starship": BuildConfig(
+            name="starship",
+            template=Path("starship.toml"),
+            context_type=ContextType.full,
+        ),
+        "info": BuildConfig(
+            name="info",
+            template=Path("palette_info.json"),
+            color_type=ColorFieldType.info,
+        ),
+        "html-samples": BuildConfig(
+            name="html-samples",
+            template=Path("palette.html"),
+            color_type=ColorFieldType.css,
+        ),
+    }
 
 
-class Config(BaseNode):
+class Config(Options):
     """App configuration.
 
     Contains information about which app theme files to generate and where
     to write the build artifacts.
+
+    This particular Config will not load settings from anything except
+    init arguments, and as such serves as a default Config base.
     """
 
-    verbose: bool = False
-    build_dir: Path = xdg.xdg_state_home() / "hadalized" / "build"
-    """Directory containing built theme files."""
-    cache_dir: Path = Cache.default_dir
-    cache_in_memory: bool = False
-    """Application cache directory. Set to `None` to use an in-memory cache."""
-    template_dir: Path = Path("./templates")
-    """Directory where templates will be searched for. If a template is not
-    found in this directory, it will be loaded from those defined in the
-    package."""
-    builds: dict[str, BuildConfig] = Field(
-        default_factory=BuildConfig.defaults,
-        exclude=True,
-    )
+    builds: dict[str, BuildConfig] = Field(default_factory=default_builds)
     """Build directives specifying how and which theme files are
     generated."""
     palettes: dict[str, Palette] = Field(default_factory=default_palettes)
-    """Palette definitions."""
+    """Palette color definitions."""
     terminal: TerminalConfig = TerminalConfig()
-    misc: dict = Field(default={})
+    _palette_lu: dict[str, Palette] = PrivateAttr(default={})
+    """Lookup for a palette by name or alias."""
+    _opts: Options | None = PrivateAttr(default=None)
 
-    def to(self, color_type: ColorType) -> Self:
+    @classmethod
+    def settings_customise_sources(
+        cls,
+        settings_cls: type[BaseSettings],
+        init_settings: PydanticBaseSettingsSource,
+        env_settings: PydanticBaseSettingsSource,
+        dotenv_settings: PydanticBaseSettingsSource,
+        file_secret_settings: PydanticBaseSettingsSource,
+    ) -> tuple[PydanticBaseSettingsSource, ...]:
+        """Set source loading priority.
+
+        Returns:
+            Priority order in which config settings are loaded.
+
+        """
+        return (init_settings,)
+
+    def model_post_init(self, context, /) -> None:
+        """Set lookups."""
+        for key, palette in self.palettes.items():
+            self._palette_lu[key] = palette
+            for alias in palette.aliases:
+                self._palette_lu[alias] = palette
+
+        return super().model_post_init(context)
+
+    @property
+    def opt(self) -> Options:
+        """Access just the runtime options from the configuration."""
+        if self._opts is None:
+            fields = set(Options.model_fields)
+            opts = {k: v for k, v in self if k in fields and k in self.model_fields_set}
+            self._opts = Options.model_construct(**opts)
+        return self._opts
+
+    def get_palette(self, name: str) -> Palette:
+        """Get Palette by name or alias.
+
+        Returns:
+            Palette instance.
+
+        """
+        return self._palette_lu[name]
+
+    def to(self, color_type: str | ColorFieldType) -> Self:
         """Transform the ColorFields to the specified type.
 
         Use to render themes that require the entire context (e.g., all palettes),
@@ -443,23 +331,112 @@ class Config(BaseNode):
             A new Config instance whose ColorFields match the input type.
 
         """
-        palettes = {k: p.to(color_type) for k, p in self.palettes.items()}
-        return self.replace(palettes=palettes)
+        return self.replace(
+            palettes={k: v.parse().to(color_type) for k, v in self.palettes.items()}
+        )
 
-    def hex(self) -> Self:
-        """Convert palette ColorField values to their hex representation.
-
-        Returns:
-            A new Config instance with color hex codes for ColorField values.
-
-        """
-        return self.to(ColorType.hex)
-
-    def css(self) -> Self:
-        """Convert palette ColorField values to their css representation.
+    def parse_palettes(self) -> Self:
+        """Parse each Palette to contain full ColorInfo.
 
         Returns:
-            A new Config instance with color css strings for ColorField values.
+            A new instance with each Palette a ParsedPalette instance.
 
         """
-        return self.to(ColorType.css)
+        return self.replace(palettes={k: v.parse() for k, v in self.palettes.items()})
+
+    def __hash__(self) -> int:
+        """Hash of the main config contents, excluding runtime options.
+
+        Returns:
+            The hash of the json dump of the instance.
+
+        """
+        if self._hash is None:
+            include = {"palettes", "build", "terminal"}
+            self._hash = hash(self.model_dump_json(include=include))
+        return self._hash
+
+
+class UserConfig(Config):
+    """User configuration settings.
+
+    While schematically identical to the base ``Config`` parent class, when
+    a UserConfig is instantiated a selection of settings locations are
+    additionally scanned. The priority of settings is
+
+    - init params, e.g., those passed from the CLI
+    - environment variables prefixed with `HADALIZED_`
+    - environment variables in `./hadalized.env` prefixxed with `HADALIZED_`
+    - environment variables in `./.env` prefixxed with `HADALIZED_`
+    - settings in `./hadalized.toml`
+    - settings in `$XDG_CONFIG_DIR/hadalized/config.toml`
+    """
+
+    model_config = SettingsConfigDict(
+        frozen=True,
+        env_file=[".env", "hadalized.env"],
+        env_file_encoding="utf-8",
+        # The env_nested_delimiter=_ and max_split=1 means
+        # HADALIZED_OPTS_CACHE_DIR == Config.opts.cache_dir
+        # otherwise with delimiter=__ we would need to pass
+        # HADALIZED_OPTS__CACHE_DIR
+        env_nested_delimiter="_",
+        env_nested_max_split=1,
+        env_prefix="hadalized_",
+        env_parse_none_str="null",
+        env_parse_enums=True,
+        # env_ignore_empty=True,
+        extra="forbid",
+        nested_model_default_partial_update=True,
+        toml_file=[homedirs.config() / "config.toml", "hadalized.toml"],
+    )
+
+    @classmethod
+    def settings_customise_sources(
+        cls,
+        settings_cls: type[BaseSettings],
+        init_settings: PydanticBaseSettingsSource,
+        env_settings: PydanticBaseSettingsSource,
+        dotenv_settings: PydanticBaseSettingsSource,
+        file_secret_settings: PydanticBaseSettingsSource,
+    ) -> tuple[PydanticBaseSettingsSource, ...]:
+        """Set source loading priority.
+
+        Returns:
+            Priority order in which config settings are loaded.
+
+        """
+        return (
+            init_settings,
+            env_settings,
+            dotenv_settings,
+            file_secret_settings,
+            TomlConfigSettingsSource(settings_cls),
+        )
+
+
+def load_config(opt: Options | None = None) -> Config:
+    """Load a configuration instance with the cli options merged in.
+
+    Handles the cases when a user specifies a specific user config file
+    or when only the default configuration should be used.
+
+    Args:
+        opt: Options that determine which configuration sources are utilized.
+
+    Returns:
+        A Config or UserConfig instance.
+
+    """
+    if opt is None:
+        config = UserConfig()
+    elif opt.config_file is not None:
+        import tomllib
+
+        data = opt.config_file.read_text()
+        config = Config.model_validate(tomllib.loads(data)) | opt
+    elif opt.no_config:
+        config = Config() | opt
+    else:
+        config = UserConfig() | opt
+    return config.parse_palettes() if config.parse else config
