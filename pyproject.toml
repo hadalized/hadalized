@@ -1,6 +1,6 @@
 [project]
 name = "hadalized"
-version = "0.4.0"
+version = "0.4.1.dev1"
 description = "Hadalized color theme builder."
 readme = "README.md"
 authors = [
@@ -106,3 +106,17 @@ ignore = [
 
 [tool.ruff.format]
 preview = true
+
+[[tool.uv.index]]
+# use via uv publish --index=testpypi
+name = "pypi"
+url = "https://pypi.org/simple/"
+publish-url = "https://upload.pypi.org/legacy/"
+explicit = true
+
+[[tool.uv.index]]
+# use via uv publish --index=testpypi
+name = "testpypi"
+url = "https://test.pypi.org/simple/"
+publish-url = "https://test.pypi.org/legacy/"
+explicit = true
