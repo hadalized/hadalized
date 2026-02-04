@@ -2,6 +2,7 @@
 
 A palette is the primary context used to render a color theme.
 """
+
 from typing import Literal, Self
 
 from pydantic import Field, PrivateAttr

@@ -2,13 +2,20 @@
 
 from enum import StrEnum, auto
 from pathlib import Path
-from typing import Self
+from typing import Any, Self
 
 from pydantic import Field, PrivateAttr
+from pydantic_settings import (
+    BaseSettings,
+    PydanticBaseSettingsSource,
+    SettingsConfigDict,
+    TomlConfigSettingsSource,
+)
 
 from hadalized import homedirs
 from hadalized.base import BaseNode
 from hadalized.color import Bases, ColorFieldType, Hues, Ref
+from hadalized.options import Options
 from hadalized.palette import Palette
 
 
@@ -37,7 +44,8 @@ def default_palettes() -> dict[str, Palette]:
         gamut=dark.gamut,
         aliases=["gray"],
         hue=Hues.dark(),
-        base=Bases.dark() | Bases(
+        base=Bases.dark()
+        | Bases(
             bg=Ref.w13,
             bg1=Ref.w14,
             bg2=Ref.w16,
@@ -65,7 +73,8 @@ def default_palettes() -> dict[str, Palette]:
         gamut=day.gamut,
         aliases=["white"],
         hue=Hues.light(),
-        base=day.base | Bases(
+        base=day.base
+        | Bases(
             bg=Ref.w100,
             bg1=Ref.w99,
             bg2=Ref.w95,
@@ -113,7 +122,7 @@ class ANSIMap(BaseNode):
     """Typically represents bright cyan."""
     _idx_to_name: dict[int, str] = PrivateAttr({})
 
-    def model_post_init(self, context, /) -> None:
+    def model_post_init(self, context: Any, /) -> None:
         """Model post init."""
         super().model_post_init(context)
         self._idx_to_name = {idx: name for name, idx in self}
@@ -164,11 +173,11 @@ class BuildConfig(BaseNode):
     )
     """Application name or theme category."""
     subdir: Path | None = None
-    """Build subdir where theme files are placed. Defaults to `name`."""
-    template: str
+    """Build sub-directory where theme files are placed. Defaults to `name`."""
+    template: Path
     """Template filename relative to the templates directory."""
-    filename: str = Field(
-        default="",
+    filename: str | None = Field(
+        default=None,
         examples=[
             "{context.name}.{template_ext}",  # default
             "starship-alt.toml",
@@ -181,25 +190,24 @@ class BuildConfig(BaseNode):
     template name.
     """
     context_type: ContextType = ContextType.palette
-    """The underlying context type to pass to the template. """
+    """The underlying context type to pass to the template."""
     color_type: ColorFieldType = ColorFieldType.hex
     """How each Palette should be transformed when presented as context
     to the template."""
     _fname: str = PrivateAttr(default="")
 
-    def model_post_init(self, context, /) -> None:
+    def model_post_init(self, context: Any, /) -> None:
         """Construct filename template."""
-        filename = self.filename
+        filename = self.filename or ""
         if not self.filename:
             if self.context_type == ContextType.palette:
-                filename = "{context.name}.{template_ext}"
+                filename = "{context.name}.{ext}"
             else:
-                filename = self.template
+                filename = str(self.template)
 
         # Infer extension from template file extension.
-        if filename.endswith("{template_ext}"):
-            _, _, ext = self.template.rpartition(".")
-            filename = filename.replace("{template_ext}", ext)
+        if filename.endswith(".{ext}"):
+            filename = filename.replace(".{ext}", self.template.suffix)
         self._fname = filename.rstrip(".")
         return super().model_post_init(context)
 
@@ -224,55 +232,66 @@ def default_builds() -> dict[str, BuildConfig]:
     return {
         "neovim": BuildConfig(
             name="neovim",
-            template="neovim.lua",
+            template=Path("neovim.lua"),
         ),
         "wezterm": BuildConfig(
             name="wezterm",
-            template="wezterm.toml",
+            template=Path("wezterm.toml"),
         ),
         "starship": BuildConfig(
             name="starship",
-            template="starship.toml",
+            template=Path("starship.toml"),
             context_type=ContextType.full,
         ),
-        # "info": BuildConfig(
-        #     name="info",
-        #     template="palette_info.json",
-        #     color_type=ColorFieldType.identity,
-        # ),
+        "info": BuildConfig(
+            name="info",
+            template=Path("palette_info.json"),
+            color_type=ColorFieldType.info,
+        ),
         "html-samples": BuildConfig(
             name="html-samples",
-            template="palette.html",
+            template=Path("palette.html"),
             color_type=ColorFieldType.css,
         ),
     }
 
 
-class Config(BaseNode):
+class Config(Options):
     """App configuration.
 
     Contains information about which app theme files to generate and where
     to write the build artifacts.
+
+    This particular Config will not load settings from anything except
+    init arguments, and as such serves as a default Config base.
     """
 
-    verbose: bool = False
-    build_dir: Path = Field(default_factory=homedirs.build)
-    """Directory containing built theme files."""
-    cache_dir: Path = Field(default_factory=homedirs.cache)
-    cache_in_memory: bool = False
-    disable_cache: bool = False
-    """Application cache directory. Set to `None` to use an in-memory cache."""
-    template_dir: Path = Field(default_factory=homedirs.template)
-    """Directory where templates will be searched for. If a template is not
-    found in this directory, it will be loaded from those defined in the
-    package."""
-    builds: dict[str, BuildConfig] = default_builds()
+    builds: dict[str, BuildConfig] = Field(default_factory=default_builds)
     """Build directives specifying how and which theme files are
     generated."""
-    palettes: dict[str, Palette] = default_palettes()
-    """Palette definitions."""
+    palettes: dict[str, Palette] = Field(default_factory=default_palettes)
+    """Palette color definitions."""
     terminal: TerminalConfig = TerminalConfig()
     _palette_lu: dict[str, Palette] = PrivateAttr(default={})
+    """Lookup for a palette by name or alias."""
+    _opts: Options | None = PrivateAttr(default=None)
+
+    @classmethod
+    def settings_customise_sources(
+        cls,
+        settings_cls: type[BaseSettings],
+        init_settings: PydanticBaseSettingsSource,
+        env_settings: PydanticBaseSettingsSource,
+        dotenv_settings: PydanticBaseSettingsSource,
+        file_secret_settings: PydanticBaseSettingsSource,
+    ) -> tuple[PydanticBaseSettingsSource, ...]:
+        """Set source loading priority.
+
+        Returns:
+            Priority order in which config settings are loaded.
+
+        """
+        return (init_settings,)
 
     def model_post_init(self, context, /) -> None:
         """Set lookups."""
@@ -280,7 +299,17 @@ class Config(BaseNode):
             self._palette_lu[key] = palette
             for alias in palette.aliases:
                 self._palette_lu[alias] = palette
+
         return super().model_post_init(context)
+
+    @property
+    def opt(self) -> Options:
+        """Access just the runtime options from the configuration."""
+        if self._opts is None:
+            fields = set(Options.model_fields)
+            opts = {k: v for k, v in self if k in fields and k in self.model_fields_set}
+            self._opts = Options.model_construct(**opts)
+        return self._opts
 
     def get_palette(self, name: str) -> Palette:
         """Get Palette by name or alias.
@@ -314,3 +343,100 @@ class Config(BaseNode):
 
         """
         return self.replace(palettes={k: v.parse() for k, v in self.palettes.items()})
+
+    def __hash__(self) -> int:
+        """Hash of the main config contents, excluding runtime options.
+
+        Returns:
+            The hash of the json dump of the instance.
+
+        """
+        if self._hash is None:
+            include = {"palettes", "build", "terminal"}
+            self._hash = hash(self.model_dump_json(include=include))
+        return self._hash
+
+
+class UserConfig(Config):
+    """User configuration settings.
+
+    While schematically identical to the base ``Config`` parent class, when
+    a UserConfig is instantiated a selection of settings locations are
+    additionally scanned. The priority of settings is
+
+    - init params, e.g., those passed from the CLI
+    - environment variables prefixed with `HADALIZED_`
+    - environment variables in `./hadalized.env` prefixxed with `HADALIZED_`
+    - environment variables in `./.env` prefixxed with `HADALIZED_`
+    - settings in `./hadalized.toml`
+    - settings in `$XDG_CONFIG_DIR/hadalized/config.toml`
+    """
+
+    model_config = SettingsConfigDict(
+        frozen=True,
+        env_file=[".env", "hadalized.env"],
+        env_file_encoding="utf-8",
+        # The env_nested_delimiter=_ and max_split=1 means
+        # HADALIZED_OPTS_CACHE_DIR == Config.opts.cache_dir
+        # otherwise with delimiter=__ we would need to pass
+        # HADALIZED_OPTS__CACHE_DIR
+        env_nested_delimiter="_",
+        env_nested_max_split=1,
+        env_prefix="hadalized_",
+        env_parse_none_str="null",
+        env_parse_enums=True,
+        # env_ignore_empty=True,
+        extra="forbid",
+        nested_model_default_partial_update=True,
+        toml_file=[homedirs.config() / "config.toml", "hadalized.toml"],
+    )
+
+    @classmethod
+    def settings_customise_sources(
+        cls,
+        settings_cls: type[BaseSettings],
+        init_settings: PydanticBaseSettingsSource,
+        env_settings: PydanticBaseSettingsSource,
+        dotenv_settings: PydanticBaseSettingsSource,
+        file_secret_settings: PydanticBaseSettingsSource,
+    ) -> tuple[PydanticBaseSettingsSource, ...]:
+        """Set source loading priority.
+
+        Returns:
+            Priority order in which config settings are loaded.
+
+        """
+        return (
+            init_settings,
+            env_settings,
+            dotenv_settings,
+            file_secret_settings,
+            TomlConfigSettingsSource(settings_cls),
+        )
+
+
+def load_config(opt: Options | None = None) -> Config:
+    """Load a configuration instance with the cli options merged in.
+
+    Handles the cases when a user specifies a specific user config file
+    or when only the default configuration should be used.
+
+    Args:
+        opt: Options that determine which configuration sources are utilized.
+
+    Returns:
+        A Config or UserConfig instance.
+
+    """
+    if opt is None:
+        config = UserConfig()
+    elif opt.config_file is not None:
+        import tomllib
+
+        data = opt.config_file.read_text()
+        config = Config.model_validate(tomllib.loads(data)) | opt
+    elif opt.no_config:
+        config = Config() | opt
+    else:
+        config = UserConfig() | opt
+    return config.parse_palettes() if config.parse else config

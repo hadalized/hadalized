@@ -255,6 +255,78 @@ class Extractor:
         return val if self.is_identity else val[self.field]
 
 
+class Hue(StrEnum):
+    """Named hues. These represent the fields of a ``Hues`` instance."""
+
+    red = auto()
+    orange = auto()
+    yellow = auto()
+    lime = auto()
+    green = auto()
+    mint = auto()
+    cyan = auto()
+    azure = auto()
+    blue = auto()
+    violet = auto()
+    magenta = auto()
+    rose = auto()
+
+    @staticmethod
+    def get(index: int) -> Hue:
+        """Get a Hue color by integer index.
+
+        Returns:
+            Hue value corresponding to the index.
+
+        """
+        return _hue_lu[index]
+
+
+_hue_lu = (
+    Hue.red,  # 0
+    Hue.orange,  # 1
+    Hue.yellow,  # 2
+    Hue.lime,  # 3
+    Hue.green,  # 4
+    Hue.mint,  # 5
+    Hue.cyan,  # 6
+    Hue.azure,  # 7
+    Hue.blue,  # 8
+    Hue.violet,  # 9
+    Hue.magenta,  # 10, A
+    Hue.rose,  # 11, B
+)
+
+
+class HueAlias(BaseNode):
+    """A mapping from indexed color names to ``Hues`` fields."""
+
+    c0: Hue = Hue.get(0)
+    c1: Hue = Hue.get(1)
+    c2: Hue = Hue.get(2)
+    c3: Hue = Hue.get(3)
+    c4: Hue = Hue.get(4)
+    c5: Hue = Hue.get(5)
+    c6: Hue = Hue.get(6)
+    c7: Hue = Hue.get(7)
+    c8: Hue = Hue.get(8)
+    c9: Hue = Hue.get(9)
+    ca: Hue = Hue.get(0xA)
+    cb: Hue = Hue.get(0xB)
+
+    def model_post_init(self, context, /) -> None:
+        """Validate each Hue appears exactly once.
+
+        Raises:
+            ValueError: If there are not the same number of values as field names.
+
+        """
+        required_len = len(self)
+        vals = (v for _, v in self)
+        if len(set(vals)) != required_len:
+            raise ValueError(f"Instance must contain {required_len} unique values.")
+        return super().model_post_init(context)
+
 
 class ColorMap(BaseNode):
     """Base dataclass for mappings of the form color name -> ColorInfo.
@@ -295,18 +367,6 @@ class ColorMap(BaseNode):
         elif isinstance(handler, Parser):
             inst._field_type = ColorFieldType.info
         return inst
-
-    def __or__(self, other: Self) -> Self:
-        """Merge two ColorMap instances of the same type.
-
-        Returns:
-            A new ColorMap instance with the set fields of `other` merged in.
-
-        """
-        old = self.model_dump()
-        new_fields_set = set(other.model_fields_set)
-        merged = old | {k: v for k, v in other if k in new_fields_set}
-        return self.model_validate(merged)
 
 
 class Hues(ColorMap):
@@ -406,7 +466,7 @@ class Hues(ColorMap):
             violet="oklch(0.825 0.200 290)",
             magenta="oklch(0.825 0.200 330)",
             rose="oklch(0.825 0.200 360)",
-       )
+        )
 
     @staticmethod
     def bright() -> Hues:

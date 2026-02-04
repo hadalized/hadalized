@@ -1,8 +1,7 @@
 import pytest
-
-from hadalized.color import ColorInfo, ColorFieldType, parse, Extractor
-
 from coloraide import Color
+
+from hadalized.color import ColorFieldType, ColorInfo, Extractor, parse
 
 
 def test_color_info_color_method():

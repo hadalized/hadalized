@@ -10,7 +10,7 @@ APP_DIR = Path(APP_NAME)
 
 
 def config() -> Path:
-    """Application configuration home.
+    """Application user configuration home.
 
     Returns:
         The application configuration home directory.
@@ -50,7 +50,7 @@ def data() -> Path:
 
 
 def template() -> Path:
-    """Application config templates home.
+    """Application user config templates home.
 
     Returns:
         The application configuration home directory.

@@ -1,7 +1,7 @@
 [project]
 name = "hadalized"
 version = "0.4.0"
-description = "Hadalized theme builder."
+description = "Hadalized color theme builder."
 readme = "README.md"
 authors = [
     { name = "Shawn O'Hare", email = "shawn@shawnohare.com" }
@@ -14,15 +14,17 @@ dependencies = [
     "loguru>=0.7.3",
     "luadata>=1.0.5",
     "pydantic>=2.12.5",
+    "pydantic-settings>=2.12.0",
     "tomli-w>=1.2.0",
     "xdg-base-dirs>=6.0.2",
 ]
 
 [project.scripts]
 hadalized = "hadalized.__main__:app"
+hdl = "hadalized.__main__:app"
 
 [build-system]
-requires = ["uv_build>=0.9.25,<0.10.0"]
+requires = ["uv_build>=0.9.28,<0.10.0"]
 build-backend = "uv_build"
 
 [dependency-groups]
@@ -40,6 +42,10 @@ addopts = "--cov-report=term-missing --cov=src -vvv -ra -q"
 testpaths = [
     "tests",
 ]
+
+[tool.coverage.report]
+# include = ["src/hadalized/*.py"]
+omit = ["src/hadalized/__main__.py"]
 
 [tool.ruff.lint]
 # select = ["ALL"]
@@ -86,6 +92,16 @@ select = [
 ignore = [
     "D203",  # Conflicts with google style docstrings and D211
     "D213",  # Conflicts with google style docstrings and D212
+]
+
+[tool.ruff.lint.extend-per-file-ignores]
+"tests/**/*.py" = [
+    "D",
+    "S101",     # asserts allowed in tests...
+    "ARG",      # Unused function args -> fixtures nevertheless are functionally relevant...
+    "FBT",      # Don't care about booleans as positional arguments in tests, e.g. via @pytest.mark.parametrize()
+    "PLR2004",  # magic numbers are ok
+    "PT011",    # pytest.raises(ValueError) is ok
 ]
 
 [tool.ruff.format]

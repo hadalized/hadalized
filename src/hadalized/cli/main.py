@@ -1,188 +1,221 @@
 """Application commands."""
 
-from pathlib import Path
-from typing import Annotated
+from contextlib import suppress
+from pathlib import Path  # noqa
+from shutil import rmtree
 
-from cyclopts import App, Parameter
+from cyclopts import App
 
 from hadalized import homedirs
+from hadalized.cache import Cache
+from hadalized.config import Config, Options, load_config
 from hadalized.writer import ThemeWriter
-from hadalized.config import Config
 
 app = App()
 cache_app = app.command(App(name="cache", help="Interact with the application cache."))
 config_app = app.command(
     App(name="config", help="Interact with the application config.")
 )
-# palette_app = app.command(
-#     App(name="palette", help="Interact with palettes.")
-#
-# )
-
-
-# def _get_config(config: Config | None = None) -> Config:
-#     """allow this func to be monkeypatched for unit tests?"""
-#     from hadalized.config import Config
-#     return Config()
-#
+palette_app = app.command(App(name="palette", help="Interact with palettes."))
+state_app = app.command(
+    App(name="state", help="Interact with the application state, e.g., built files.")
+)
 
 
 @app.command
-def build(
-    app: Annotated[list[str] | None, Parameter(negative="")] = None,
-    exclude: Annotated[list[str] | None, Parameter(alias="-e", negative="")] = None,
-    output: Annotated[Path | None, Parameter(alias=["-o", "--out"])] = None,
-    palette: Annotated[list[str] | None, Parameter(alias="-p")] = None,
-    verbose: Annotated[bool, Parameter(alias="-v", negative="")] = False,
-    prefix: Annotated[bool, Parameter(alias="-P", negative="")] = False,
-    cache: bool = True,
-    config: Annotated[Config | None, Parameter(parse=False)] = None,
-):
-    """Build themes for the specified applications.
+def build(name: str | None = None, opt: Options | None = None):
+    """Build application color themes files.
+
+    When no applications or palette is specified, themes will be built for all
+    application and palette pairs.
 
     Args:
-        app: Build themes for the specified list of application names.
-            If none are provided, all theme files will be built.
-        exclude: A list of application names to exclude when building.
-        output: An output directory to copy generated theme files to.
-        palette: List of palettes to build. If excluded, all palettes are
-            included.
-        verbose: Run in verbose mode.
-        prefix: If set, add each application name / theme category prefix to
-            the output path. Ignored if `output` is not specified.
-        cache: If set, use the cache.
+        name: Target application to build. Use ``--app`` to include multiple.
+        opt: Options.
+
     """
-    exclude = exclude or []
-    config = config or Config()
-    if palette is None:
-        palettes = config.palettes
-    else:
-        palettes = {p.name: p for p in (config.get_palette(x) for x in palette)}
-
-    config = config.replace(
-        verbose=verbose,
-        palettes=palettes,
-        disable_cache=not cache,
-    )
-
-    if not app:
-        build_configs = [v for k, v in config.builds.items() if k not in exclude]
-    else:
-        build_configs = [
-            v for k, v in config.builds.items() if k in app and k not in exclude
-        ]
+    opt = opt or Options()
+    if name is not None:
+        opt |= Options(include_builds=[*opt.include_builds, name])
+    config = load_config(opt)
+    if config.dry_run:
+        print("DRY-RUN. No theme files will be generated or copied.")
     with ThemeWriter(config) as writer:
-        for build_config in build_configs:
-            output_dir = output
-            if prefix and output_dir is not None:
-                output_dir /= build_config.name
-            writer.build(build_config, output_dir=output_dir)
+        writer.run()
 
 
-@config_app.command(name="info")
-def config_info(parse: Annotated[bool, Parameter(negative="")] = False):
-    from rich import print_json
-
-    config = Config()
-    if parse:
-        config = config.parse_palettes()
-    print_json(config.model_dump_json())
+# @config_app.command(name="info")
+# def config_info(opt: Options | None = None):
+#     """Dispaly configuration info."""
+#     from rich import print_json
+#
+#     config = load_config(opt)
+#     print_json(config.model_dump_json())
 
 
 @config_app.command(name="schema")
 def config_schema():
-    from rich import print_json
+    """Display configuration schema."""
     import json
+
+    from rich import print_json
 
     print_json(json.dumps(Config.model_json_schema()))
 
 
 @config_app.command(name="init")
-def config_init(
-    force: Annotated[bool, Parameter(negative="")] = False,
-):
-    """Populate application configuration in $XDG_CONFIG_HOME/hadalized
+def config_init(opts: Options | None = None):
+    """Populate application configuration toml file.
 
-    Args:
-        force: If supplied, rewrite existing user configuration files.
+    When `--output=stdout` the toml contents will be printed.
     """
-    # TODO: just tests for now
     import tomli_w as toml
 
-    config_path = homedirs.config() / "config.toml"
-    if not force and config_path.exists():
-        print(f"{config_path} already exists.")
+    config = load_config(opts)
+    if str(config.output_dir) == "stdout":
+        print(toml.dumps(config.model_dump(mode="json", exclude_none=True)))
         return
-    config_path.parent.mkdir(parents=True, exist_ok=True)
-    config = Config()
-    # print_json(config.model_dump_json())
+    output = config.output_dir or homedirs.config()
+    if output.suffix != ".toml":
+        output /= "config.toml"
 
-    try:
-        with config_path.open("wb") as fp:
-            print(f"Creating {config_path}")
-            data = config.model_dump(mode="json", exclude_none=True)
+    output_exists = output.exists()
+    if output_exists and not config.quiet:
+        print(f"{output} already exists.")
+    if output_exists and not config.force:
+        return
+
+    output.parent.mkdir(parents=True, exist_ok=True)
+    with output.open("wb") as fp:
+        if not config.quiet:
+            print(f"Creating {output}")
+        data = config.model_dump(mode="json", exclude_none=True)
+        if not config.dry_run:
             toml.dump(data, fp)
-    except TypeError as exc:
-        print(f"Unable to write config file: {exc}")
-        config_path.unlink()
+    # except TypeError as exc:
+    #     print(f"Unable to write config file: {exc}")
+    #     output.unlink()
 
 
-@app.command(name="palette")
-def palette_info(name: str = "hadalized", gamut: str | None = None, parse: bool = True):
+@palette_app.command(name="parse")
+def palette_parse(
+    name: str = "hadalized",
+    *,
+    gamut: str | None = None,
+    opt: Options | None = None,
+):
     """Show information about a particular palette.
 
     Args:
         name: Palette name or alias, e.g., "hadalized".
         gamut: A specifed gamut to parse against. If not provided, the
             gamut defined by the palette is used.
-        parse: Whether to fully parse the palette. If set to false, only
-            raw color definitions are shown.
+        opt: Options
 
     """
     # TODO: Respect user config.
     from rich import print_json
 
-    config = Config()
-    palette = config.get_palette(name)
-    if parse:
+    opt = opt or Options()
+    config = load_config(opt)
+    for item in [name, *config.include_palettes]:
+        palette = config.get_palette(item)
         if gamut is not None:
             palette = palette.replace(gamut=gamut)
-        palette = palette.parse()
-    print_json(palette.model_dump_json())
+        print_json(palette.parse().model_dump_json())
 
 
-@cache_app.command(name="clear")
-def cache_clear(
-    config: Annotated[Config, Parameter(parse=False)] = Config(),
-):
+@cache_app.command(name="clean")
+def cache_clean(opt: Options | None = None):
     """Clear the application cache."""
-    from hadalized.cache import Cache
+    config = load_config(opt)
+    if config.dry_run and not config.quiet:
+        print("DRY-RUN: Cache files will not be deleted.")
+    if not config.quiet:
+        print(f"Clearing {config.cache_dir}")
+    if config.verbose:
+        files = "\n".join(str(x) for x in config.cache_dir.glob("**/*") if x.is_file())
+        print(files)
+    if not config.dry_run:
+        with suppress(FileNotFoundError):
+            rmtree(config.cache_dir)
 
-    with Cache() as cache:
-        cache.clear()
+
+@cache_app.command(name="dir")
+def cache_dir(opt: Options | None = None):
+    """Show the cache directory."""
+    config = load_config(opt)
+    print(config.cache_dir)
 
 
 @cache_app.command(name="list", alias=["ls"])
-def cache_list():
-    """List the contents of the application cache.
-
-    Args:
-        config: Configuration instance.
-
-    """
-    from hadalized.cache import Cache
-    from rich import print_json
+def cache_list(opt: Options | None = None):
+    """List the contents of the application cache."""
     import json
 
-    with Cache() as cache:
+    from rich import print_json
+
+    config = load_config(opt)
+
+    with Cache(config.opt) as cache:
         print_json(json.dumps(cache.get_digests()))
 
 
-@cache_app.command(name="info")
-def cache_info(config: Config = Config()):
-    """List the contents of the application cache."""
-    with ThemeWriter(config) as writer:
-        cache = writer.cache
-        print(f"Cache dir: {cache.cache_dir.absolute()}")
-        print(f"Cache db file: {cache._db_file.absolute()}")
-        print(f"Cache is in memory: {cache.in_memory}.")
+@state_app.command(name="dir")
+def state_dir(opt: Options | None = None):
+    """Show the applicate state directory."""
+    config = load_config(opt)
+    print(config.opt.state_dir)
+
+
+@state_app.command(name="clean")
+def state_clean(opt: Options | None = None):
+    """Clear application state files such as built themes."""
+    config = load_config(opt)
+    if config.dry_run and not config.quiet:
+        print("DRY-RUN. No state files will be deleted.")
+    if not config.quiet:
+        # import json
+        #
+        # from rich import print_json
+
+        print(f"Clearing {config.state_dir}")
+        files = "\n".join(str(x) for x in config.state_dir.glob("**/*") if x.is_file())
+        if files:
+            print(files)
+        # print_json(json.dumps(files))
+    if not config.dry_run:
+        with suppress(FileNotFoundError):
+            rmtree(config.state_dir)
+
+
+@state_app.command(name="list", alias=["ls"])
+def state_list(opt: Options | None = None):
+    """List application state files."""
+    config = load_config(opt)
+    files = "\n".join(str(x) for x in config.state_dir.glob("**/*") if x.is_file())
+    print(files)
+
+
+@app.command
+def clean(opt: Options | None = None):
+    """Clean cache and state files."""
+    cache_clean(opt)
+    state_clean(opt)
+
+
+# @app.command
+# def debug(opt: Options | None = None):
+#     """Debug things."""
+#     from rich import print_json
+#
+#     config = load_config(opt)
+#     print(f"{config.cache_dir=}")
+#     print(f"{config.dry_run=}")
+#     print(f"{opt=}")
+#     if opt is not None:
+#         print(f"{opt.model_fields_set=}")
+#     print("config.opt")
+#     print_json(config.opt.model_dump_json())
+#     print(f"{config.model_fields_set=}")
+#     print(f"{config.opt.model_fields_set=}")
