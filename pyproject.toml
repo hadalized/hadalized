@@ -1,12 +1,36 @@
+[build-system]
+requires = ["uv_build>=0.9.30,<0.10.0"]
+build-backend = "uv_build"
+
+
 [project]
 name = "hadalized"
-version = "0.4.1.dev1"
+version = "0.4.1.dev2"
 description = "Hadalized color theme builder."
 readme = "README.md"
 authors = [
     { name = "Shawn O'Hare", email = "shawn@shawnohare.com" }
 ]
 requires-python = ">=3.14"
+keywords = [
+    "colorscheme", "colortheme", "oklch",
+]
+classifiers = [
+  # "Development Status :: 5 - Production/Stable",
+  "Environment :: Console",
+  "Intended Audience :: Developers",
+  "Operating System :: OS Independent",
+  "License :: OSI Approved :: MIT-0 License",
+  "Programming Language :: Python",
+  "Programming Language :: Python :: 3.14",
+  "Programming Language :: Python :: 3 :: Only",
+  "Topic :: Software Development :: Application Color Themes",
+]
+license = "MIT-0"
+license-files = [
+  "LICENSE",
+
+]
 dependencies = [
     "coloraide>=6.2",
     "cyclopts>=4.5.0",
@@ -19,13 +43,16 @@ dependencies = [
     "xdg-base-dirs>=6.0.2",
 ]
 
+[project.urls]
+Repository = "https://github.com/shawnohare/hadalized"
+# Documentation = "https://docs.{domain}.com/hadalized"
+Changelog = "https://github.com/shawnohare/hadalized/blob/main/CHANGELOG.md"
+Releases = "https://github.com/shawnohare/hadalized/releases"
+# Discord = "https://discord.gg/hadalized"
+
 [project.scripts]
 hadalized = "hadalized.__main__:app"
 hdl = "hadalized.__main__:app"
-
-[build-system]
-requires = ["uv_build>=0.9.28,<0.10.0"]
-build-backend = "uv_build"
 
 [dependency-groups]
 dev = [
