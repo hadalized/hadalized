@@ -5,7 +5,7 @@ build-backend = "uv_build"
 
 [project]
 name = "hadalized"
-version = "0.4.4"
+version = "0.5.0"
 description = "Hadalized color theme builder."
 readme = "README.md"
 authors = [
@@ -28,7 +28,6 @@ classifiers = [
 license = "MIT-0"
 license-files = [
   "LICENSE",
-
 ]
 dependencies = [
     "coloraide>=6.2",

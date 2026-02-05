@@ -366,27 +366,24 @@ class UserConfig(Config):
 
     - init params, e.g., those passed from the CLI
     - environment variables prefixed with `HADALIZED_`
-    - environment variables in `./hadalized.env` prefixxed with `HADALIZED_`
-    - environment variables in `./.env` prefixxed with `HADALIZED_`
+    - DISABLED in 0.5 ~environment variables in `./.env` prefixed with `HADALIZED_`
     - settings in `./hadalized.toml`
     - settings in `$XDG_CONFIG_DIR/hadalized/config.toml`
     """
 
     model_config = SettingsConfigDict(
         frozen=True,
-        env_file=[".env", "hadalized.env"],
+        env_file=["hadalized.env"],
         env_file_encoding="utf-8",
         # The env_nested_delimiter=_ and max_split=1 means
-        # HADALIZED_OPTS_CACHE_DIR == Config.opts.cache_dir
-        # otherwise with delimiter=__ we would need to pass
-        # HADALIZED_OPTS__CACHE_DIR
-        env_nested_delimiter="_",
-        env_nested_max_split=1,
+        env_nested_delimiter="__",
+        # env_nested_max_split=1,
         env_prefix="hadalized_",
         env_parse_none_str="null",
         env_parse_enums=True,
         # env_ignore_empty=True,
-        extra="forbid",
+        extra="forbid",  # When set, will try to push all .env vars into config.
+        # extra="ignore",
         nested_model_default_partial_update=True,
         toml_file=[homedirs.config() / "config.toml", "hadalized.toml"],
     )

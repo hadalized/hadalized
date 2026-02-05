@@ -102,6 +102,10 @@ def test_config_init_output_dir_given(tmp_path):
     m.config_init(Options(output_dir=tmp_path, no_config=True, dry_run=True))
 
 
+def test_config_options():
+    m.config_options()
+
+
 def test_config_init_output_stdout(tmp_path):
     m.config_init(Options(output_dir=Path("stdout"), no_config=True))
 
