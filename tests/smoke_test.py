@@ -3,6 +3,7 @@
 Catch cases where e.g. files are missing so the import doesn't work. It is
 recommended to check that assets are included.
 """
+
 from hadalized.config import Options, load_config
 from hadalized.writer import ThemeWriter
 
@@ -13,4 +14,3 @@ if not template:
     raise RuntimeError("Unable to load builtin template.")
 else:
     print("Smoke test successful.")
-

@@ -97,6 +97,15 @@ def config_init(opts: Options | None = None):
     #     output.unlink()
 
 
+@config_app.command(name="options")
+def config_options(opts: Options | None = None):
+    """Show the configuration `Options` that are loaded."""
+    from rich import print_json
+
+    config = load_config(opts)
+    print_json(config.opt.model_dump_json())
+
+
 @palette_app.command(name="parse")
 def palette_parse(
     name: str = "hadalized",

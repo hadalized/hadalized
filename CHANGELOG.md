@@ -6,6 +6,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.5.0] - 2025-02-04
+
+Use dedicated dotenv file.
+
+- Only inspect `hadalized.env` files for configuration options.
+- Add `config options` subcommand to inspect configuration options.
+
+BaseSettings appears to pass the entire contents of a dotenv file as
+init args, which causes validation errors when extra init args are
+forbidden.
+
 ## [0.4.0] - 2026-02-04
 ### Added
 - Load user defined config and template files.
