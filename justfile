@@ -19,6 +19,9 @@ check:
     # uv run --exact ruff check src/ tests/
     # uv run --exact ty check src/ tests/
 
+tag version:
+    git tag -a "v{{version}}" -m "v{{version}}"
+
 test:
     uv run --exact pytest
 
