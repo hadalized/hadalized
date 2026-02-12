@@ -5,7 +5,7 @@ build-backend = "uv_build"
 
 [project]
 name = "hadalized"
-version = "0.5.0"
+version = "0.5.1"
 description = "Hadalized color theme builder."
 readme = "README.md"
 authors = [
@@ -42,10 +42,10 @@ dependencies = [
 ]
 
 [project.urls]
-Repository = "https://github.com/shawnohare/hadalized"
+Repository = "https://github.com/hadalized/hadalized"
 # Documentation = "https://docs.{domain}.com/hadalized"
-Changelog = "https://github.com/shawnohare/hadalized/blob/main/CHANGELOG.md"
-Releases = "https://github.com/shawnohare/hadalized/releases"
+Changelog = "https://github.com/hadalized/hadalized/blob/main/CHANGELOG.md"
+Releases = "https://github.com/hadalized/hadalized/releases"
 # Discord = "https://discord.gg/hadalized"
 
 [project.scripts]
