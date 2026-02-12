@@ -49,7 +49,6 @@ just test
 
 ## Roadmap / TODOs
 
-- [ ] Add to pypi.
 - [ ] Consider removing the "in-memory" cache functionality.
 - [ ] (A) Add ability to map named colors such as `red` to an abstracted name
   such as `color1`, similar to `base16`. Use these abstracted names color theme
