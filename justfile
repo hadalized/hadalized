@@ -25,12 +25,10 @@ check:
 bump part:
     uv version --bump {{part}}
 
-# ver:
-#     VERSION=$(hdl --version) && echo "version is $VERSION"
-
 # Pushing a tag of the form v* kicks off the publish github workflow.
-publish version:
-    git tag -a "v{{version}}" -m "v{{version}}"
+publish:
+    @echo "Publishing $(uv version)"
+    VERSION=$(uv version --short) && git tag -a "v${VERSION}" -m "v${VERSION}"
     git push --tags
 
 test:
