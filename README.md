@@ -20,7 +20,7 @@ quickly becomes tedius to manually convert oklch values to their hex
 equivalents.
 
 The builder primarily targets the neovim colorscheme files in
-[hadalized.nvim](https://github.com/shawnohare/hadalized.nvim), as that is
+[hadalized.nvim](https://github.com/hadalized/hadalized.nvim), as that is
 the editor we primarily use.
 
 ## Example CLI Usage

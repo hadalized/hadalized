@@ -5,7 +5,7 @@ build-backend = "uv_build"
 
 [project]
 name = "hadalized"
-version = "0.5.3"
+version = "0.5.4"
 description = "Hadalized color theme builder."
 readme = "README.md"
 authors = [
