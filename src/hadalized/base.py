@@ -73,6 +73,15 @@ class BaseNode(BaseSettings):
         """
         return self.model_validate(self.model_dump() | kwargs)
 
+    def encode(self) -> bytes:
+        """Encode the data structure json dump.
+
+        Returns:
+            A byte encoding of the model to pass into built hash proxy.
+
+        """
+        return self.model_dump_json().encode()
+
     def __getitem__(self, key: str):
         """Provide dict-like lookup for all models.
 

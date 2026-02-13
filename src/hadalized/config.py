@@ -344,6 +344,16 @@ class Config(Options):
         """
         return self.replace(palettes={k: v.parse() for k, v in self.palettes.items()})
 
+    def encode(self) -> bytes:
+        """Encode the data structure json dump.
+
+        Returns:
+            A byte encoding of the model to pass into built hash proxy.
+
+        """
+        include = {"palettes", "terminal"}
+        return self.model_dump_json(include=include).encode()
+
     def __hash__(self) -> int:
         """Hash of the main config contents, excluding runtime options.
 
@@ -352,7 +362,7 @@ class Config(Options):
 
         """
         if self._hash is None:
-            include = {"palettes", "build", "terminal"}
+            include = {"palettes", "terminal"}
             self._hash = hash(self.model_dump_json(include=include))
         return self._hash
 

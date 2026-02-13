@@ -34,7 +34,7 @@ def _encode(val: Template | BaseNode) -> bytes:
             with suppress(FileNotFoundError):
                 data = Path(fname).read_bytes()
     else:
-        data = val.model_dump_json().encode()
+        data = val.encode()
 
     return data
 

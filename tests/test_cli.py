@@ -9,7 +9,6 @@ from hadalized.config import Options
 @pytest.fixture
 def realopts(tmp_path: Path) -> Options:
     return Options(
-        # include_build=["neovim"],
         include_palettes=["hadalized"],
         prefix=True,
         state_dir=tmp_path / "state",
@@ -22,7 +21,6 @@ def realopts(tmp_path: Path) -> Options:
 @pytest.fixture
 def dryopts(tmp_path: Path) -> Options:
     return Options(
-        # include_build=["neovim"],
         include_palettes=["hadalized"],
         prefix=True,
         state_dir=tmp_path / "state",
@@ -47,9 +45,18 @@ def test_build_single_app_no_copy(realopts: Options):
     assert (opt.build_dir / "starship" / "starship.toml").exists()
 
 
+def test_build_all(realopts: Options):
+    opt = realopts
+    assert opt.output_dir is not None
+    m.build(opt=opt)
+    assert (opt.build_dir / "neovim" / "hadalized.lua").exists()
+    assert (opt.output_dir / "neovim" / "hadalized.lua").exists()
+
+
 def test_build_single_app_dry(dryopts: Options):
     opt = dryopts
     m.build(name="neovim", opt=opt)
+    assert (opt.build_dir / "neovim" / "hadalized.lua").exists() is False
 
 
 def test_cache_list():

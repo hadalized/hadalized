@@ -1,7 +1,7 @@
 """Application commands."""
 
 from contextlib import suppress
-from pathlib import Path  # noqa
+from pathlib import Path
 from shutil import rmtree
 
 from cyclopts import App
@@ -27,7 +27,16 @@ def build(name: str | None = None, opt: Options | None = None):
     """Build application color themes files.
 
     When no applications or palette is specified, themes will be built for all
-    application and palette pairs.
+    application and palette pairs, and copied to subdirs in `./build`.
+
+    When a single application name is specified, such as `neovim`, the theme
+    files will be built and dumped directly into `./build`, by default.
+
+    Usage examples:
+    - hdl build -> build/**/*
+    - hld build neovim -> build/hadalized*.lua
+    - hdl build neovim --out=colors -> colors/hadalized*.lua
+    - hdl build --out=none -> Built themes only placed in app state dir.
 
     Args:
         name: Target application to build. Use ``--app`` to include multiple.
@@ -35,8 +44,18 @@ def build(name: str | None = None, opt: Options | None = None):
 
     """
     opt = opt or Options()
+    # Special default overrides for basic calls
     if name is not None:
-        opt |= Options(include_builds=[*opt.include_builds, name])
+        apps = [*opt.include_builds, name]
+        opt = Options(output_dir=Path("build")) | opt | Options(include_builds=apps)
+    else:
+        opt = Options(output_dir=Path("build"), prefix=True) | opt
+    if opt.verbose:
+        from rich import print_json
+
+        print(f"opt fields set {opt.model_fields_set}")
+        print("Options:")
+        print_json(opt.model_dump_json())
     config = load_config(opt)
     if config.dry_run:
         print("DRY-RUN. No theme files will be generated or copied.")

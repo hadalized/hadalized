@@ -25,6 +25,8 @@ check:
 bump part:
     uv version --bump {{part}}
 
+# ver:
+#     VERSION=$(hdl --version) && echo "version is $VERSION"
 
 # Pushing a tag of the form v* kicks off the publish github workflow.
 publish version:
