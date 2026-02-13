@@ -1,11 +1,11 @@
 [build-system]
-requires = ["uv_build>=0.10.0,<0.11.0"]
+requires = ["uv_build>=0.10,<0.11.0"]
 build-backend = "uv_build"
 
 
 [project]
 name = "hadalized"
-version = "0.5.1"
+version = "0.5.2"
 description = "Hadalized color theme builder."
 readme = "README.md"
 authors = [
@@ -55,15 +55,18 @@ hdl = "hadalized.__main__:app"
 [dependency-groups]
 dev = [
     "ipython>=9.8.0",
+    "prek>=0.3.2",
     "pytest>=9.0.2",
     "pytest-cov>=7.0.0",
+    "pytest-ruff>=0.5",
+    "pytest-ty>=0.1.4",
     "ruff>=0.14.10",
     "ty>=0.0.8",
 ]
 
 [tool.pytest.ini_options]
 # add --cov-report=html to also get html
-addopts = "--cov-report=term-missing --cov=src -vvv -ra -q"
+addopts = "--cov-report=term-missing --cov=src -vvv -ra -q --ruff --ruff-format --ty"
 testpaths = [
     "tests",
 ]
