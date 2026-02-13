@@ -91,3 +91,9 @@ def test_opts_properties():
     opts = Options(no_config=True)
     assert opts.use_cache is True
     assert opts.use_templates is False
+
+
+def test_encode_ignores_opts():
+    conf1 = Config()
+    conf2 = Config(verbose=True)
+    assert conf1.encode() == conf2.encode()

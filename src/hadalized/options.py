@@ -82,7 +82,7 @@ class Options(BaseNode):
     items must include a key or alias in the ``Config.palettes`` definitions.
     If not specified, all defined palettes will be utilized.
     """
-    prefix: Annotated[bool, Parameter(negative="")] = False
+    prefix: Annotated[bool, Parameter()] = False
     """When set in conjunction with an output directory, built themes will
     be placed in a subdirectory determined by built theme file's parent
     directory. Typically this is just the applicate name, e.g., 'neovim'."""
