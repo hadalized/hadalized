@@ -23,6 +23,14 @@ The builder primarily targets the neovim colorscheme files in
 [hadalized.nvim](https://github.com/hadalized/hadalized.nvim), as that is
 the editor we primarily use.
 
+## Installation
+
+We recommend installing the cli application via `uv`
+
+```sh
+uv tool install hadalized
+```
+
 ## Example CLI Usage
 
 Assuming `uv` is installed,
@@ -32,6 +40,14 @@ uv run --exact hadalized build --out="build"
 ```
 will produce rendered theme files for all builtin applications in `./build`.
 
+If the tool is installed via `uv tool install` or if the virtualenv is activated
+
+```sh
+# To build neovim color themes
+uv build neovim --out=colors  # -> colors/hadalized*.lua
+# To build all color themes, with outputs to `./build`
+uv build
+```
 
 ## Development
 
@@ -39,7 +55,7 @@ Assuming `uv` and `just` are installed
 
 ```sh
 uv sync --locked
-source .venv/bin/evaluate
+source .venv/bin/activate
 # make changes
 just fmt
 just check
