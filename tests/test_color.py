@@ -9,9 +9,7 @@ def test_color_info_color_method():
     color = Color(raw)
     val = ColorInfo(
         raw=raw,
-        gamut="srgb",
         oklch="",
-        raw_oklch="",
         hex="",
         css="",
         is_in_gamut=True,
@@ -23,9 +21,7 @@ def test_color_info_color_method():
 def test_color_info_color_method_raises_error():
     val = ColorInfo(
         raw="bad color",
-        gamut="",
         oklch="",
-        raw_oklch="",
         hex="",
         css="",
         is_in_gamut=True,
