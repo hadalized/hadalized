@@ -29,7 +29,7 @@ bump part:
 publish:
     @echo "Publishing $(uv version)"
     VERSION=$(uv version --short) && git tag -a "v${VERSION}" -m "v${VERSION}"
-    git push --tags
+    git push origin tag "v$(uv version --short)"
 
 test:
     uv run --exact pytest
