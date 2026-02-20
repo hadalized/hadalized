@@ -1,4 +1,4 @@
-# hadalized color theme build
+# hadalized (hdl) color theme build
 
 Python package with CLI to build hadalized-style application themes.
 
@@ -23,35 +23,31 @@ The builder primarily targets the neovim colorscheme files in
 [hadalized.nvim](https://github.com/hadalized/hadalized.nvim), as that is
 the editor we primarily use.
 
-## Installation
+## Installation (uv / pip)
 
 We recommend installing the cli application via `uv`
 
 ```sh
 uv tool install hadalized
 ```
+which exposes the `hdl` application and its longform equivalent `hadalized`.
+
 
 ## Example CLI Usage
 
-Assuming `uv` is installed,
-
-```sh
-uv run --exact hadalized build --out="build"
-```
-will produce rendered theme files for all builtin applications in `./build`.
 
 If the tool is installed via `uv tool install` or if the virtualenv is activated
 
 ```sh
 # To build neovim color themes
-uv build neovim --out=colors  # -> colors/hadalized*.lua
+hdl build neovim --out=colors  # -> colors/hadalized*.lua
 # To build all color themes, with outputs to `./build`
-uv build
+hdl build
 ```
 
 ## Development
 
-Assuming `uv` and `just` are installed
+Assuming `uv`, `just`, and `prek` are installed
 
 ```sh
 uv sync --locked
