@@ -30,8 +30,6 @@ def test_parse_fail():
 def test_in_gamut(val: str, gamut: str, in_gamut: bool):
     color = parse(val, gamut=gamut)
     assert color.is_in_gamut is in_gamut
-    if not in_gamut:
-        assert color.oklch != color.raw_oklch
 
 
 def test_max_oklch():

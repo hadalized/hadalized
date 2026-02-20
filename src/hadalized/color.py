@@ -112,19 +112,11 @@ class ColorInfo(BaseNode):
     """
 
     raw: str = Field(examples=["oklch(0.6 0.2 25)", "#010203"])
-    # parsed: ColorBase = Field(exclude=True)
     """Parseable color definition, e.g., a css value."""
-    gamut: str = Field(
-        default=ColorSpace.srgb,
-        examples=["srgb", "display-p3"],
-    )
-    """Target gamut to fit the raw color definition to."""
-    raw_oklch: ColorFieldStr
-    """Raw input in the oklch colorspace."""
     oklch: ColorFieldStr
-    """OKLCH value fit to the specified `gamut`."""
+    """OKLCH css value fit to the specified gamut defined by `css`."""
     css: ColorFieldStr
-    """CSS value in the gamut."""
+    """CSS value in the gamut. Encodes the underlying gamut."""
     hex: ColorFieldStr
     """24 or 32-bit hex representation for RGB gamuts."""
     is_in_gamut: bool
@@ -207,8 +199,6 @@ class Parser:
 
         inst = ColorInfo(
             raw=val,
-            raw_oklch=raw_oklch.to_string(),
-            gamut=self.gamut,
             oklch=oklch_fit.to_string(),
             css=color.to_string(),
             hex=self._to_hex(color),
